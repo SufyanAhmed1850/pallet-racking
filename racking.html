@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pallet racking</title><style>@media (max-width:560px){.stats{flex-wrap:wrap;gap:6px 16px!important}}</style></head><body>
+<script src="core.js"></script>
+<script>
+/* Modular selective pallet racking. 1 unit = 1 cm. x = depth (aisle side at x = RW), y = along the run (+y = viewer-left),
+   z = up. A run starts as one bay (two upright frames + beam pairs) and grows by adding bays to the left (each new bay
+   adds one frame and its beams, sharing the frame it hooks onto) and beam levels upward (uprights get taller).
+
+   How the real thing works
+   1. Upright frames stand on base plates bolted to the floor; each frame = two uprights joined by horizontal and
+      diagonal bracing (the frame carries the vertical load and stops the run swaying across its depth).
+   2. Beams have welded end connectors whose hooks drop into the teardrop slots on the uprights' aisle faces; a safety
+      lock pin stops them being knocked out from below. A level = a front + back beam pair, rated as a pair.
+   3. A pallet goes in from the aisle and is set down across both beams (it overhangs each by ~5 cm). The beams sag
+      elastically: design limit L/200 at the rated load (1850 mm span -> 9.3 mm), drawn 4x here so it reads.
+   4. Vertical clearance: each load needs >= 75 mm above it to the beam over it (EN 15620), so the level pitch limits
+      what fits; heavier beams are deeper and take a little of that clearance.
+   5. Loads arrive at the inbound dock, are put away into the rack and leave through the ship-out lane.
+
+   Parts
+   STRUCTURE  upright (cold-rolled section, 90 face x 70 deep) . teardrop slots on the aisle face . base plate .
+              anchor bolts x2 . frame bracing (horizontals + diagonals) . column guard on each aisle upright
+   BEAMS      front + back box beam per level per bay . end connector plate x4 . safety lock pin x4 .
+              location label per pallet position
+   SIGNS      safe-working-load notice across the end frame
+   LOADS      EUR pallet (3 bottom boards, 9 blocks, deck) . cartons (stretch wrapped) . plastic totes . wooden crate .
+              steel mesh box pallet (own feet, mesh walls, contents)
+   FLOOR      aisle line . inbound dock bays . ship-out lane */
+const RW = 110, UPX = 7, UPY = 9, CS = 185, BP = CS + UPY, CLR = (CS - 160) / 3;
+const MAXB = 6, MAXL = 5, GAP = 7.5;
+const RATINGS = [ { kg:1000, h:10 }, { kg:2000, h:12 }, { kg:3000, h:14 } ];
+const PITCHES = [120, 140, 160];
+const SAG_MM = 1850 / 200, SAG_EXAG = 4, SAGV = SAG_MM / 10 * SAG_EXAG;     // drawn sag (cm) at the rated load
+const LOADS = [
+  { name:'CARTONS',  noun:'carton pallet', kg:420, h:110, hx:60, hy:40 },
+  { name:'TOTES',    noun:'tote pallet',   kg:240, h:90,  hx:60, hy:40 },
+  { name:'CRATE',    noun:'crate',         kg:560, h:95,  hx:60, hy:40 },
+  { name:'MESH BOX', noun:'mesh box',      kg:780, h:97,  hx:61, hy:41.5 },
+];
+const DOCK = [[55, -110], [55, -200], [195, -110], [195, -200]];
+const SHIPC = [125, -298], SHIPY = [-340, -256];
+const UPM = { l:'#7ea6e6', m:'#4f7cc4', d:'#22355c' }, GUARDM = matOf('#f4c430');
+const PWOOD = { l:'#e8c48c', m:'#c99e62', d:'#8a6a3c' }, CARD = { l:'#dcaa72', m:'#bb8854', d:'#7c5532' };
+const TOTEM = { l:'#62c590', m:'#3f9f6e', d:'#1f5a3c' }, CRATEM = { l:'#e6c387', m:'#c79d5c', d:'#8a683c' };
+const GALV = { l:'#d9dee0', m:'#aab2b5', d:'#6f787c' }, PARTM = matOf('#9aa6ad');
+const PAINT = '#f2c230', SHLITE = mix(SHADOW, '#f2efe7', .55);
+
+const rkC01 = v => Math.max(0, Math.min(1, v));
+const rkSh = u => 4*u*(1 - u);                                   // sag shape along the span
+const bayY0 = b => b*BP + UPY;
+const posY = (b, p) => bayY0(b) + (p ? CS - CLR - 40 : CLR + 40);
+const POS_SH = rkSh((CLR + 40) / CS);
+const rkBH = st => RATINGS[st.rating].h, rkCap = st => RATINGS[st.rating].kg;
+const beamTop = (st, l) => l*st.pitchV;
+const sagOf = (st, b, l) => (st.sag[b + '-' + l] || { s:0 }).s;
+const inRack = s => s && s.dock == null && !s.ship;
+const sameSlot = (a, c) => a.dock != null ? a.dock === c.dock : a.ship ? !!c.ship : inRack(c) && a.b === c.b && a.l === c.l && a.p === c.p;
+const slotName = s => `${String(s.b + 1).padStart(2, '0')}-${s.l}-${s.p ? 'B' : 'A'}`;
+const mw = w => `style="stroke-width:${w.toFixed(2)}"`;
+
+/* ---------- text on a side face (y = const) and on the floor, always the readable way round ---------- */
+const rkTxt = (o, U, V, str, size, col, w) => `<text transform="${txM(o, U, V)}" font-size="${size}" fill="${col}" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-weight="${w}" letter-spacing=".04em">${str}</text>`;
+const rkTxSide = (x, y, z, str, size, col = INK, w = 800) => { const o = P(x, y, z); return rkTxt(o, Dv(1,0,0), Dv(0,0,-1), str, size, col, w) + rkTxt(o, Dv(-1,0,0), Dv(0,0,-1), str, size, col, w); };
+const rkTxFloor = (x, y, str, size, col = INK, w = 800) => { const o = P(x, y, .1), U = Dv(0,-1,0);
+  return U[0] >= 0 ? rkTxt(o, U, Dv(1,0,0), str, size, col, w) : rkTxt(o, Dv(0,1,0), Dv(-1,0,0), str, size, col, w); };
+
+/* ---------- the visible faces of a box, each with a (u, v) map: u across the face, v up it (top: u = x, v = y) ---------- */
+function rkFaces(x0, y0, z0, x1, y1, z1){
+  const F = [
+    { n:[1,0,0],  lu:y1 - y0, lv:z1 - z0, at:(u, v) => [x1, y1 - u, z0 + v] },
+    { n:[-1,0,0], lu:y1 - y0, lv:z1 - z0, at:(u, v) => [x0, y0 + u, z0 + v] },
+    { n:[0,1,0],  lu:x1 - x0, lv:z1 - z0, at:(u, v) => [x0 + u, y1, z0 + v] },
+    { n:[0,-1,0], lu:x1 - x0, lv:z1 - z0, at:(u, v) => [x1 - u, y0, z0 + v] },
+    { n:[0,0,1],  lu:x1 - x0, lv:y1 - y0, at:(u, v) => [x0 + u, y0 + v, z1] } ];
+  return F.filter(fc => vis(fc.n));
+}
+// seams: nu x nv cells on every visible face (side faces split along their length by the counts for that axis)
+function rkGrid(x0, y0, z0, x1, y1, z1, nx, ny, nz, col, w){
+  let d = '';
+  for (const fc of rkFaces(x0, y0, z0, x1, y1, z1)){
+    const top = fc.n[2] === 1, nu = top ? nx : fc.n[0] ? ny : nx, nv = top ? ny : nz;
+    for (let i = 1; i < nu; i++){ const u = fc.lu*i/nu; d += pd([fc.at(u, 0), fc.at(u, fc.lv)], false); }
+    for (let i = 1; i < nv; i++){ const v = fc.lv*i/nv; d += pd([fc.at(0, v), fc.at(fc.lu, v)], false); }
+  }
+  return d ? `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>` : '';
+}
+const rkQuad = (fc, u0, v0, u1, v1) => [fc.at(u0, v0), fc.at(u1, v0), fc.at(u1, v1), fc.at(u0, v1)];
+
+/* ---------- loads ---------- */
+function rkPallet(cx, cy, z0){
+  const ps = [];
+  for (const dy of [-35, 0, 35]){
+    ps.push({ box:[[cx-60, cy+dy-5, z0], [cx+60, cy+dy+5, z0+2.2]], svg: box(cx-60, cy+dy-5, z0, cx+60, cy+dy+5, z0+2.2, PWOOD, tone, .6) });
+    for (const dx of [-53, 0, 53]) ps.push({ box:[[cx+dx-7, cy+dy-5, z0+2.2], [cx+dx+7, cy+dy+5, z0+10]], svg: box(cx+dx-7, cy+dy-5, z0+2.2, cx+dx+7, cy+dy+5, z0+10, PWOOD, tone, .6) });
+  }
+  let o = byDepth(ps) + box(cx-60, cy-40, z0+10, cx+60, cy+40, z0+14.4, PWOOD, tone, .8);
+  // deck board ends on the short faces
+  for (const fc of rkFaces(cx-60, cy-40, z0+10, cx+60, cy+40, z0+14.4)) if (fc.n[0]){ let d = '';
+    for (const u of [14, 30, 50, 66]) d += pd([fc.at(u, 0), fc.at(u, 4.4)], false);
+    o += `<path d="${d}" fill="none" stroke="${PWOOD.d}" stroke-width=".7"/>`; }
+  return o;
+}
+function rkCartons(cx, cy, z0, zt){
+  const x0 = cx-58, x1 = cx+58, y0 = cy-39, y1 = cy+39;
+  let o = box(x0, y0, z0, x1, y1, zt, CARD, tone, 1) + rkGrid(x0, y0, z0, x1, y1, zt, 4, 3, 3, CARD.d, .7);
+  for (const fc of rkFaces(x0, y0, z0, x1, y1, zt)) if (!fc.n[2]){
+    // stretch wrap: a faint sheen band and a highlight streak
+    o += fill(pd(rkQuad(fc, 0, fc.lv*.18, fc.lu, fc.lv*.82)), '#ffffff', 'opacity=".13"');
+    o += `<path d="${pd([fc.at(fc.lu*.08, fc.lv*.2), fc.at(fc.lu*.55, fc.lv*.86)], false)}" fill="none" stroke="#ffffff" stroke-width="1.4" opacity=".45" stroke-linecap="round"/>`;
+    if (fc.n[0] === 1){   // shipping label with a barcode on the aisle face
+      o += shape(rkQuad(fc, 48, fc.lv - 30, 70, fc.lv - 15), '#fbfaf3', .6);
+      let bars = ''; for (let u = 50; u < 68; u += 1.6 + (u*7 % 3)*.4) bars += pd([fc.at(u, fc.lv - 27), fc.at(u, fc.lv - 21)], false);
+      o += `<path d="${bars}" fill="none" stroke="${INK}" stroke-width=".7"/>`;
+    }
+  }
+  return o;
+}
+function rkTotes(cx, cy, z0, zt){
+  const x0 = cx-60, x1 = cx+60, y0 = cy-40, y1 = cy+40, lh = (zt - z0) / 3;
+  let o = box(x0, y0, z0, x1, y1, zt, TOTEM, tone, 1) + rkGrid(x0, y0, z0, x1, y1, zt, 2, 2, 3, TOTEM.d, .9);
+  for (const fc of rkFaces(x0, y0, z0, x1, y1, zt)) if (!fc.n[2]){
+    let rims = '', holes = '';
+    for (let k = 0; k < 3; k++){ const v = lh*(k + 1) - 3.2; rims += pd([fc.at(0, v), fc.at(fc.lu, v)], false);
+      for (let j = 0; j < 2; j++){ const uc = fc.lu*(j + .5)/2; holes += pd(rkQuad(fc, uc - 6, v - 4.5, uc + 6, v - 1.2)); } }
+    o += `<path d="${rims}" fill="none" stroke="${TOTEM.d}" stroke-width=".6" opacity=".8"/>` + fill(holes, TOTEM.d) + ink(holes, .5);
+  }
+  return o;
+}
+function rkCrate(cx, cy, z0, zt){
+  const x0 = cx-58, x1 = cx+58, y0 = cy-38, y1 = cy+38;
+  let o = box(x0, y0, z0, x1, y1, zt, CRATEM, tone, 1);
+  for (const fc of rkFaces(x0, y0, z0, x1, y1, zt)){
+    const i = 3.2, br = [fc.at(i, i), fc.at(fc.lu - i, i), fc.at(fc.lu - i, fc.lv - i), fc.at(i, fc.lv - i)];
+    const dg = fc.n[2] ? '' : pd([fc.at(i, i), fc.at(fc.lu - i, fc.lv - i)], false);
+    o += `<path d="${pd(br)}${dg}" fill="none" stroke="${CRATEM.d}" ${mw(4.6)} opacity=".55" stroke-linejoin="round"/>`;
+    o += `<path d="${pd(br)}" fill="none" stroke="${INK}" stroke-width=".5" opacity=".6"/>`;
+  }
+  if (vis([1,0,0])) o += tx(x1 + .1, cy, z0 + (zt - z0)*.5 - 3, 'FRAGILE', 9, '#a8322a', 800);
+  return o;
+}
+function rkMesh(cx, cy, z0){
+  const x0 = cx-61, x1 = cx+61, y0 = cy-41.5, y1 = cy+41.5, zb = z0 + 14, zt = z0 + 97;
+  const feet = [[x0, y0], [x0, y1 - 9], [x1 - 9, y0], [x1 - 9, y1 - 9]].map(([x, y]) => ({ box:[[x, y, z0], [x + 9, y + 9, zb - 4]], svg: box(x, y, z0, x + 9, y + 9, zb - 4, GALV, tone, .7) }));
+  let o = byDepth(feet) + box(x0, y0, zb - 4, x1, y1, zb, GALV, tone, .9);
+  const walls = [
+    { n:[1,0,0],  at:(u, v) => [x1, y1 - u, zb + v], lu:y1 - y0 }, { n:[-1,0,0], at:(u, v) => [x0, y0 + u, zb + v], lu:y1 - y0 },
+    { n:[0,1,0],  at:(u, v) => [x0 + u, y1, zb + v], lu:x1 - x0 }, { n:[0,-1,0], at:(u, v) => [x1 - u, y0, zb + v], lu:x1 - x0 } ];
+  const lv = zt - zb;
+  const mesh = (fc, near) => { let d = '';
+    for (let u = 8; u < fc.lu - 2; u += 8) d += pd([fc.at(u, 0), fc.at(u, lv)], false);
+    for (let v = 8; v < lv - 2; v += 8) d += pd([fc.at(0, v), fc.at(fc.lu, v)], false);
+    const q = [fc.at(0, 0), fc.at(fc.lu, 0), fc.at(fc.lu, lv), fc.at(0, lv)];
+    return (near ? fill(pd(q), GALV.l, 'opacity=".2"') : '') + `<path d="${d}" fill="none" stroke="${near ? GALV.d : GALV.m}" stroke-width="${near ? .7 : .5}"/>`
+      + (near ? ink(pd(q), .9) + (fc.n[0] === 1 ? ink(pd([fc.at(0, lv*.5), fc.at(fc.lu, lv*.5)], false), 1.1) : '') : ''); };
+  const post = (x, y) => { const sx = x > cx ? -3 : 0, sy = y > cy ? -3 : 0; return box(x + sx, y + sy, zb, x + sx + 3, y + sy + 3, zt, GALV, tone, .7); };
+  const pv = [[x0, y0], [x0, y1], [x1, y0], [x1, y1]].map(([x, y]) => ({ near: depthOf([x, y, 0]) > depthOf([cx, cy, 0]) + 1, svg: post(x, y) }));
+  o += walls.filter(w => !vis(w.n)).map(w => mesh(w, false)).join('') + pv.filter(p => !p.near).map(p => p.svg).join('');
+  // contents: a bin of machined parts, lower than the walls
+  const parts = [[-30, -18], [8, 14], [32, -16], [-6, -2], [-34, 20]].map(([dx, dy], i) => ({ at:[cx + dx, cy + dy, zb + 52], svg: cyl(cx + dx, cy + dy, zb + 48, zb + 54 + (i % 2)*3, 8 - (i % 3), PARTM, tone, .8) }));
+  o += box(cx - 56, cy - 37, zb, cx + 56, cy + 37, zb + 48, PARTM, tone, .8) + byDepth(parts);
+  o += walls.filter(w => vis(w.n)).map(w => mesh(w, true)).join('') + pv.filter(p => p.near).map(p => p.svg).join('');
+  o += ink(pd(on(PZ(zt), rectUV(x0, y0, x1, y1))), 1.3);
+  return o;
+}
+function rkLoad(t, cx, cy, z0){
+  if (t === 3) return rkMesh(cx, cy, z0);
+  const zl = z0 + 14.4, zt = z0 + LOADS[t].h;
+  return rkPallet(cx, cy, z0) + (t === 0 ? rkCartons(cx, cy, zl, zt) : t === 1 ? rkTotes(cx, cy, zl, zt) : rkCrate(cx, cy, zl, zt));
+}
+const loadBox = (t, x, y, z) => { const Ld = LOADS[t]; return [[x - Ld.hx, y - Ld.hy, z], [x + Ld.hx, y + Ld.hy, z + Ld.h]]; };
+const boxPts = b => { const o = []; for (const x of [b[0][0], b[1][0]]) for (const y of [b[0][1], b[1][1]]) for (const z of [b[0][2], b[1][2]]) o.push([x, y, z]); return o; };
+
+/* ---------- structure ---------- */
+// a box beam bent by its sag s (deepest at mid-span), from y = ya to yb
+function rkBeam(x0, x1, ya, yb, zb, zt, s, m){
+  const N = 10, ys = Array.from({ length:N + 1 }, (_, i) => ya + (yb - ya)*i/N), dz = y => s*rkSh((y - ya)/(yb - ya));
+  const T = x => ys.map(y => [x, y, zt - dz(y)]), Bt = x => ys.map(y => [x, y, zb - dz(y)]);
+  let o = '';
+  if (vis([-1,0,0])) o += shape([...T(x0), ...Bt(x0).reverse()], tone([-1,0,0], m), .8);
+  if (vis([1,0,0]))  o += shape([...T(x1), ...Bt(x1).reverse()], tone([1,0,0], m), .8);
+  if (vis([0,0,1]))  o += shape([...T(x0), ...T(x1).reverse()], tone([0,0,1], m), .8);
+  if (vis([0,0,-1])) o += shape([...Bt(x0), ...Bt(x1).reverse()], tone([0,0,-1], m), .8);
+  const fx = vis([1,0,0]) ? x1 : vis([-1,0,0]) ? x0 : null;
+  if (fx != null) o += ink(pd([...T(fx), ...Bt(fx).reverse()]), 1.4);
+  return o;
+}
+function rkFrame(put, j, y0, h, st){
+  const yc = y0 + UPY/2, r = 1.5;
+  for (const x0 of [0, RW - UPX]){
+    const front = x0 > 0;
+    put([[x0 - 1, y0 - 3, 0], [x0 + UPX + 1, y0 + UPY + 3, 1]], box(x0 - 1, y0 - 3, 0, x0 + UPX + 1, y0 + UPY + 3, 1, GALV, tone, .7)
+      + cyl(x0 + UPX/2, y0 - 1.7, 1, 2.3, .9, DARK, tone, .5, 10) + cyl(x0 + UPX/2, y0 + UPY + 1.7, 1, 2.3, .9, DARK, tone, .5, 10));
+    let up = box(x0, y0, 1, x0 + UPX, y0 + UPY, h, UPM, tone, 1);
+    const fn = front ? [1,0,0] : [-1,0,0];
+    if (vis(fn) && h > 14){ const xf = front ? RW + .05 : -.05;
+      up += `<path d="${pd([[xf, y0 + 2.6, 8], [xf, y0 + 2.6, h - 4]], false)}${pd([[xf, y0 + UPY - 2.6, 8], [xf, y0 + UPY - 2.6, h - 4]], false)}" fill="none" stroke="${UPM.d}" stroke-width="1.1" stroke-dasharray="2.4 2.6"/>`; }
+    put([[x0, y0, 1], [x0 + UPX, y0 + UPY, h]], up);
+    if (front){ const g0 = 1, g1 = Math.min(42, h);
+      let g = box(RW + .3, y0 - 1, g0, RW + 3.8, y0 + UPY + 1, g1, GUARDM, tone, .9);
+      if (vis([1,0,0])) for (const zz of [10, 24]) g += `<path d="${pd([[RW + 3.85, y0 - 1, zz], [RW + 3.85, y0 + UPY + 1, zz + 7]], false)}" fill="none" stroke="${INK}" ${mw(2.2)}/>`;
+      put([[RW + .3, y0 - 1, g0], [RW + 3.8, y0 + UPY + 1, g1]], g); }
+  }
+  if (h < 40) return;
+  // bracing in the frame plane: a bottom and top horizontal and a zigzag of diagonals between them
+  const xa = UPX, xb = RW - UPX, zA = 12, zB = h - 12, n = Math.max(1, Math.round((zB - zA)/95)), dz = (zB - zA)/n;
+  put([[xa, yc - r, zA - r], [xb, yc + r, zA]], rod([xa, yc, zA], [xb, yc, zA], r, UPM, tone, .8));
+  put([[xa, yc - r, zB], [xb, yc + r, zB + r]], rod([xa, yc, zB], [xb, yc, zB], r, UPM, tone, .8));
+  for (let i = 0; i < n; i++){ const za = zA + i*dz, zb2 = za + dz, a = i % 2 ? xb : xa, b2 = i % 2 ? xa : xb;
+    put([[xa, yc - r, za], [xb, yc + r, zb2]], rod([a, yc, za], [b2, yc, zb2], r*.9, UPM, tone, .7)); }
+  if (j === 0){   // safe-working-load notice bolted across the end frame
+    const z0 = Math.min(92, h - 46), z1 = z0 + 32, cap = rkCap(st);
+    let sg = box(3, -1, z0, RW - 3, -.2, z1, CERAMIC, tone, .9);
+    if (vis([0,-1,0])){ sg += fill(pd(on(PY(-1.05), rectUV(3, z1 - 8, RW - 3, z1))), '#e2483d');
+      sg += rkTxSide(RW/2, -1.1, z1 - 5.6, 'SAFE WORKING LOAD', 4.2, '#fbfaf3', 800);
+      sg += rkTxSide(RW/2, -1.1, z1 - 15.4, `${cap} KG PER LEVEL`, 6.2, INK, 800);
+      sg += rkTxSide(RW/2, -1.1, z1 - 23, `${cap*st.nl} KG PER BAY`, 4.4, INK, 700);
+      sg += rkTxSide(RW/2, -1.1, z1 - 29.2, `${st.nl} LEVELS - ${st.pitch} CM PITCH`, 3.6, INK, 700); }
+    put([[3, -1, z0], [RW - 3, -.2, z1]], sg);
+  }
+}
+
+/* ---------- state helpers ---------- */
+const rackItems = st => st.items.filter(i => inRack(i.slot) && i.mode !== 'ship');
+const levelLoad = (st, b, l, ex) => rackItems(st).filter(i => i !== ex && i.slot.b === b && i.slot.l === l).reduce((a, i) => a + LOADS[i.t].kg, 0);
+const beamLoad = (st, b, l) => rackItems(st).filter(i => i.slot.b === b && i.slot.l === l && (i.mode === 'rest' || i.landed)).reduce((a, i) => a + LOADS[i.t].kg, 0);
+const occupied = (st, s, ex) => st.items.some(i => i !== ex && i.mode !== 'ship' && inRack(i.slot) && sameSlot(i.slot, s));
+const clearH = (st, pitch = st.pitch, rating = st.rating) => pitch - RATINGS[rating].h;
+function check(st, it, s){
+  const Ld = LOADS[it.t];
+  if (s.l > 0){ const tot = levelLoad(st, s.b, s.l, it) + Ld.kg; if (tot > rkCap(st)) return `Over the beam rating: ${tot} kg on a ${rkCap(st)} kg level`; }
+  if (s.l < st.nl && Ld.h + GAP > clearH(st)) return `Too tall: a ${Ld.noun} needs ${Ld.h + GAP} cm, this level has ${clearH(st)} cm`;
+  return '';
+}
+function restPos(st, it, s = it.slot){
+  if (s.dock != null) return [DOCK[s.dock][0], DOCK[s.dock][1], 0];
+  if (s.ship) return [SHIPC[0], SHIPC[1], 0];
+  return [RW/2, posY(s.b, s.p), s.l ? beamTop(st, s.l) - sagOf(st, s.b, s.l)*POS_SH : 0];
+}
+function liftFor(st, it, s){
+  if (!inRack(s) || s.l >= st.nl) return 16;
+  return Math.max(2, Math.min(16, st.pitchV - rkBH(st) - LOADS[it.t].h - 2));
+}
+function cands(st, it){
+  const out = [{ slot: it.slot, origin: true, why:'' }];
+  if (inRack(it.slot)) out.push({ slot:{ ship:true }, why:'' });
+  for (let b = 0; b < st.nb; b++) for (let l = 0; l <= st.nl; l++) for (const p of [0, 1]){
+    const s = { b, l, p }; if (sameSlot(s, it.slot) || occupied(st, s, it)) continue;
+    out.push({ slot: s, why: check(st, it, s) }); }
+  return out;
+}
+function targetBounds(st){
+  let fr = st.nb; for (let j = 2; j <= MAXB; j++) if (st.fK[j] > 0) fr = Math.max(fr, j);
+  let zTop = Math.max(st.nl, ...st.lvK.map((k, l) => k > 0 ? l : 0))*st.pitch + 25;
+  for (const i of st.items) if (i.mode !== 'ship') zTop = Math.max(zTop, (inRack(i.slot) && i.slot.l ? i.slot.l*st.pitch : 0) + LOADS[i.t].h + 4);
+  return [-10, 262, SHIPY[0] - 6, fr*BP + UPY + 8, 0, zTop];
+}
+
+/* ---------- framing: the view widens and grows as bays and levels are added (same rules as mountFigure) ---------- */
+let rkInk = 0;
+function frameTo(B, rebuild){
+  const yaw = YAW, pitch = PITCH, svg = document.getElementById('fig');
+  OX = OY = 0; RC = [(B[0] + B[1])/2, (B[2] + B[3])/2]; RCZ = (B[4] + B[5])/2; setCam(YAW0, PITCH0);
+  const pts = []; for (const x of [B[0], B[1]]) for (const y of [B[2], B[3]]) for (const z of [B[4], B[5]]) pts.push(P(x, y, z));
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]), bw = Math.max(...xs) - Math.min(...xs), bh = Math.max(...ys) - Math.min(...ys);
+  const PA = window.FIG_A ? FIG_A() : .75, A = PA === .75 ? .75 : Math.min(PA, Math.max(.75, bh/.88/(bw/.74)*1.08)), vbW = Math.max(bw/.74, bh/.88/A), vbH = vbW*A;
+  OX = (vbW - bw)/2 + (PA === .75 ? vbW*.06 : 0) - Math.min(...xs); OY = (PA === .75 ? vbH*.04 : (vbH - bh)*.3) - Math.min(...ys);
+  setCam(yaw, pitch);
+  svg.setAttribute('viewBox', `0 0 ${f(vbW)} ${f(vbH)}`);
+  INK_K = vbW / INK_REF_VB;
+  if (rebuild && Math.abs(INK_K/(rkInk || 1) - 1) > .04){ rkInk = INK_K; document.getElementById('fdefs').innerHTML = filterFor(INK_K); bakeNoise(svg); }
+}
+
+/* ---------- physics + animation: one loop for beams, loads, modules and framing ---------- */
+let ui, simOn = false;
+function kick(){ if (simOn || !ui) return; simOn = true; ui.animate(dt => { const a = sim(ui.st, dt); if (!a) simOn = false; return a; }); }
+function impulse(st, s, kg, vz){ if (!inRack(s) || !s.l) return; const sg = st.sag[s.b + '-' + s.l] || (st.sag[s.b + '-' + s.l] = { s:0, v:0 });
+  sg.v += .00035*kg*Math.abs(vz)*(2000/rkCap(st)); }
+function sim(st, dt){
+  let act = !!st.drag || st.held != null;
+  // modules: frames grow before their beams hook on; beams come off before frames go
+  for (let b = 1; b < MAXB; b++){ const j = b + 1, want = b < st.nb;
+    if (want){ st.fK[j] = Math.min(1, st.fK[j] + dt*2.2); if (st.fK[j] >= 1) st.bK[b] = Math.min(1, st.bK[b] + dt*3); }
+    else { st.bK[b] = Math.max(0, st.bK[b] - dt*3); if (st.bK[b] <= 0) st.fK[j] = Math.max(0, st.fK[j] - dt*2.2); }
+    if (want ? st.bK[b] < 1 : st.fK[j] > 0) act = true; }
+  st.pitchV += (st.pitch - st.pitchV)*(1 - Math.exp(-7*dt)); if (Math.abs(st.pitch - st.pitchV) < .05) st.pitchV = st.pitch; else act = true;
+  let topL = 1; for (let l = 1; l <= MAXL; l++) if (l <= st.nl || st.lvK[l] > 0) topL = l;
+  const uhT = topL*st.pitchV + 25;
+  st.uhV += Math.sign(uhT - st.uhV)*Math.min(Math.abs(uhT - st.uhV), dt*Math.max(260, Math.abs(uhT - st.uhV)*6));
+  for (let l = 1; l <= MAXL; l++){
+    if (l <= st.nl){ if (st.uhV >= l*st.pitchV + 19.5) st.lvK[l] = Math.min(1, st.lvK[l] + dt*3); }
+    else st.lvK[l] = Math.max(0, st.lvK[l] - dt*3);
+    if (st.lvK[l] > 0) st.uhV = Math.max(st.uhV, l*st.pitchV + 25); }
+  if (Math.abs(uhT - st.uhV) > .05 || st.lvK.some((k, l) => l && (l <= st.nl ? k < 1 : k > 0))) act = true;
+  // beams: a spring-damper per beam pair, pulled toward the sag its load gives (SAGV at the rated load)
+  const cap = rkCap(st);
+  for (let b = 0; b < MAXB; b++) for (let l = 1; l <= MAXL; l++){
+    const key = b + '-' + l, sg = st.sag[key] || (st.sag[key] = { s:0, v:0 }), tgt = SAGV*beamLoad(st, b, l)/cap;
+    const acc = 260*(tgt - sg.s) - 11*sg.v; sg.v += acc*dt; sg.s += sg.v*dt;
+    if (Math.abs(tgt - sg.s) > .004 || Math.abs(sg.v) > .02) act = true; else { sg.s = tgt; sg.v = 0; } }
+  // loads
+  for (const it of st.items){
+    if (it.delay > 0){ it.delay -= dt; act = true; continue; }
+    const kxy = 1 - Math.exp(-12*dt);
+    if (it.mode === 'carry'){
+      const tg = st.drag && st.drag.id === it.id ? st.drag.target.slot : it.slot, r = restPos(st, it, tg), lz = r[2] + liftFor(st, it, tg), k = 1 - Math.exp(-18*dt);
+      it.x += (r[0] - it.x)*k; it.y += (r[1] - it.y)*k; it.z += (lz - it.z)*k; act = true;
+    } else if (it.mode === 'drop'){
+      const r = restPos(st, it), dh = Math.hypot(r[0] - it.x, r[1] - it.y); act = true;
+      if (dh > 1.2){ it.x += (r[0] - it.x)*kxy; it.y += (r[1] - it.y)*kxy; it.z += (r[2] + liftFor(st, it, it.slot) - it.z)*kxy; it.vz = 0; }
+      else { it.x = r[0]; it.y = r[1]; it.vz -= 981*dt; it.z += it.vz*dt;
+        if (it.z <= r[2]){ it.z = r[2];
+          if (!it.landed){ it.landed = true; impulse(st, it.slot, LOADS[it.t].kg, it.vz); }
+          if (it.vz < -45) it.vz = -it.vz*.16; else { it.vz = 0; it.mode = 'rest'; } } }
+    } else if (it.mode === 'slide'){
+      const r = restPos(st, it), k = 1 - Math.exp(-5*dt); it.x += (r[0] - it.x)*k; it.y += (r[1] - it.y)*k; it.z = 0; it.a = Math.min(1, it.a + dt*2.5); act = true;
+      if (Math.hypot(r[0] - it.x, r[1] - it.y) < .4 && it.a >= 1){ it.mode = 'rest'; it.landed = true; }
+    } else if (it.mode === 'ship'){
+      act = true;
+      if (it.sp === 0){ const k = 1 - Math.exp(-7*dt); it.x += (SHIPC[0] - it.x)*k; it.y += (SHIPC[1] - it.y)*k; it.z += (16 - it.z)*k;
+        if (Math.hypot(SHIPC[0] - it.x, SHIPC[1] - it.y) < 4) it.sp = 1; }
+      else if (it.sp === 1){ it.z = Math.max(0, it.z - dt*70); if (!it.z) it.sp = 2; }
+      else { it.y -= dt*240; it.a -= dt*1.6; }
+    } else { const r = restPos(st, it); it.x = r[0]; it.y = r[1]; it.z = r[2]; it.landed = true; }
+  }
+  st.items = st.items.filter(i => !(i.mode === 'ship' && i.a <= 0));
+  // framing follows the run's size
+  const tb = targetBounds(st), kb = 1 - Math.exp(-5*dt); let moving = false;
+  st.B = st.B.map((v, i) => { const d = tb[i] - v; if (Math.abs(d) > .3){ moving = true; return v + d*kb; } return tb[i]; });
+  frameTo(st.B, !moving); if (moving) act = true;
+  return act;
+}
+
+/* ---------- actions ---------- */
+function restock(st, k, t){ st.items.push({ id: st.nextId++, t, slot:{ dock:k }, x: DOCK[k][0] + 45, y: DOCK[k][1], z:0, vz:0, mode:'slide', a:0, delay:.5, landed:false }); }
+function commit(st, it, s){
+  const from = it.slot;
+  if (s.ship && from.dock != null) s = from;
+  if (s.ship){ it.mode = 'ship'; it.sp = 0; it.landed = false; it.a = 1; kick(); return; }
+  if (sameSlot(s, from)){ it.mode = 'drop'; kick(); return; }
+  if (occupied(st, s, it)){ ui.flash('That position is taken'); it.mode = 'drop'; kick(); return; }
+  const why = check(st, it, s); if (why){ ui.flash(why, 2400); it.mode = 'drop'; kick(); return; }
+  it.slot = s; it.mode = 'drop'; it.landed = false; it.vz = 0;
+  if (from.dock != null) restock(st, from.dock, it.t);
+  kick();
+}
+function putAway(st, t){
+  const it = st.items.find(i => i.slot.dock != null && i.t === t && i.mode === 'rest');
+  if (!it) return ui.flash(`The next ${LOADS[t].noun} is still arriving`);
+  for (let l = 0; l <= st.nl; l++) for (let b = 0; b < st.nb; b++) for (const p of [0, 1]){ const s = { b, l, p };
+    if (!occupied(st, s, it) && !check(st, it, s)) return commit(st, it, s); }
+  ui.flash(`No free position takes a ${LOADS[t].noun} - add a bay or a level`, 2400);
+}
+function unloadAll(st){
+  const rs = rackItems(st); if (!rs.length) return ui.flash('The rack is already empty');
+  rs.sort((a, c) => c.slot.l - a.slot.l || a.slot.b - c.slot.b).forEach((it, i) => { it.mode = 'ship'; it.sp = 0; it.a = 1; it.landed = false; it.delay = i*.18; });
+  kick();
+}
+const rkTooTallAtPitch = (st, pitch, rating, nl = st.nl) => rackItems(st).find(i => i.slot.l < nl && LOADS[i.t].h + GAP > clearH(st, pitch, rating));
+
+/* ---------- drag and drop: press a load, drag to a position, let go; or tap a load, then tap where it goes ---------- */
+let lastPD = null;
+addEventListener('pointerdown', e => { lastPD = e; }, true);
+const rkSvgPt = (cx, cy) => { const svg = document.getElementById('fig'), m2 = svg.getScreenCTM(); if (!m2) return [0, 0]; const p = new DOMPoint(cx, cy).matrixTransform(m2.inverse()); return [p.x, p.y]; };
+function nearestTarget(st, it, px, py){
+  let best = null, bd = 1e18;
+  for (const c of cands(st, it)){ const r = restPos(st, it, c.slot), q = P(r[0], r[1], r[2] + LOADS[it.t].h/2), d = (q[0] - px)**2 + (q[1] - py)**2;
+    if (d < bd){ bd = d; best = c; } }
+  return best;
+}
+addEventListener('pointermove', e => { const st = ui && ui.st, d = st && st.drag; if (!d) return;
+  if (Math.hypot(e.clientX - d.cx, e.clientY - d.cy) > 6) d.moved = true;
+  if (!d.moved) return;
+  const it = st.items.find(i => i.id === d.id); if (!it) return;
+  const [px, py] = rkSvgPt(e.clientX, e.clientY); d.target = nearestTarget(st, it, px, py) || d.target; kick(); });
+const endDrag = () => { const st = ui && ui.st, d = st && st.drag; if (!d) return; st.drag = null;
+  const it = st.items.find(i => i.id === d.id); if (!it) return;
+  if (!d.moved){ st.held = it.id; kick(); ui.render(); return; }        // a tap: it stays lifted until a position is tapped
+  commit(st, it, d.target.slot); ui.render(); };
+addEventListener('pointerup', endDrag); addEventListener('pointercancel', endDrag);
+function grab(st, el){
+  const id = +el.dataset.id, it = st.items.find(i => i.id === id);
+  if (!it || it.mode === 'ship' || it.mode === 'slide') return;
+  if (st.held != null){ const h = st.items.find(i => i.id === st.held); st.held = null;
+    if (h && h !== it) return ui.flash('That position is taken'); if (h){ h.mode = 'drop'; kick(); } return; }
+  st.drag = { id, cx: lastPD ? lastPD.clientX : 0, cy: lastPD ? lastPD.clientY : 0, moved:false, target:{ slot: it.slot, origin:true, why:'' } };
+  it.mode = 'carry'; it.landed = false; kick();
+}
+function tapSlot(st, s){
+  const it = st.items.find(i => i.id === st.held); st.held = null; if (!it) return;
+  commit(st, it, s);
+}
+
+/* ---------- scene ---------- */
+function scene(st, m){
+  const parts = [], put = (b, svg) => parts.push({ box: b, svg });
+  const bh = rkBH(st), UH = st.uhV;
+  const frameH = j => j < 2 ? UH : UH*ease(rkC01(st.fK[j]));
+  let s = '';
+  // cast shadows: the open frame run casts a light one, loads standing on the floor a full one
+  const sp3 = [];
+  for (let j = 0; j <= MAXB; j++){ const h = frameH(j); if (h <= 1) continue;
+    for (const x of [0, RW]) for (const y of [j*BP, j*BP + UPY]) sp3.push([x, y, 0], [x, y, h]); }
+  if (sp3.length) s += castShadow(sp3).replace(`fill="${SHADOW}"`, `fill="${SHLITE}"`);
+  for (const it of st.items){ const onFloor = !inRack(it.slot) || it.slot.l === 0 || (it.mode === 'carry' && st.drag && st.drag.id === it.id && inRack(st.drag.target.slot) && st.drag.target.slot.l === 0);
+    if (onFloor && it.z < 25 && it.a > .5) s += castShadow(boxPts(loadBox(it.t, it.x, it.y, it.z)), 0); }
+  // floor paint: aisle line, inbound dock bays, ship-out lane
+  const yEnd = Math.max(st.nb, ...st.fK.map((k, j) => k > 0 ? j : 0))*BP + UPY;
+  s += fill(pd(on(PZ(.05), rectUV(RW + 22, -24, RW + 27, yEnd + 24))), PAINT);
+  let dk = ''; for (const [x, y] of DOCK) dk += pd(on(PZ(.06), rectUV(x - 66, y - 46, x + 66, y + 46)));
+  s += `<path d="${dk}" fill="none" stroke="${PAINT}" ${mw(3)} stroke-linejoin="round"/>`;
+  s += rkTxFloor(125, -155, 'INBOUND', 9, mix(PAINT, '#000000', .35));
+  const lane = on(PZ(.05), rectUV(-5, SHIPY[0], 255, SHIPY[1]));
+  let hz = ''; for (let x = -5; x < 255; x += 26) hz += pd(on(PZ(.06), [[x, SHIPY[1]], [x + 12, SHIPY[1]], [x + 12 + 18, SHIPY[1] - 12], [x + 18, SHIPY[1] - 12]]));
+  s += fill(pd(lane), mix('#f2efe7', PAINT, .22)) + fill(hz, PAINT) + `<path d="${pd(lane)}" fill="none" stroke="${PAINT}" ${mw(3)}/>`;
+  s += rkTxFloor(SHIPC[0], SHIPC[1] + 4, 'SHIP OUT', 16, mix(PAINT, '#000000', .4));
+
+  // upright frames
+  for (let j = 0; j <= MAXB; j++){ const h = frameH(j); if (h <= 1) continue; rkFrame(put, j, j*BP, h, st); }
+  // beam pairs with their end connectors and location labels
+  for (let b = 0; b < MAXB; b++){ const kB = b ? ease(rkC01(st.bK[b])) : 1; if (kB <= 0) continue;
+    const ya = bayY0(b), yb = ya + CS;
+    for (let l = 1; l <= MAXL; l++){ const kk = kB*ease(rkC01(st.lvK[l])); if (kk <= 0) continue;
+      const zt = beamTop(st, l) + 25*(1 - kk), zb = zt - bh, sg = sagOf(st, b, l)*(kk >= 1 ? 1 : 0), op = svg => kk < 1 ? `<g opacity="${f(kk)}">${svg}</g>` : svg;
+      const overl = beamLoad(st, b, l) > rkCap(st), bm = overl ? matOf('#e2483d') : m;
+      for (const [x0, x1, front] of [[RW - 6, RW, true], [0, 6, false]]){
+        let bs = rkBeam(x0, x1, ya, yb, zb, zt, sg, bm);
+        if (front && vis([1,0,0])) for (const p of [0, 1]){ const y = posY(b, p), zc = zt - bh/2 - sg*POS_SH;
+          bs += shape(on(PX(RW + .08), rectUV(y - 8, zc - 2.5, y + 8, zc + 2.5)), '#fbfaf3', .5) + tx(RW + .12, y, zc - .95, slotName({ b, l, p }), 2.7, INK, 800); }
+        put([[x0, ya, zb - Math.max(0, sg)], [x1, yb, zt - Math.max(.8*sg, POS_SH*sg) - .02]], op(bs));
+        // connectors: a plate on the upright's face each end, with its safety lock pin
+        const xp0 = front ? RW : -.6, xp1 = front ? RW + .6 : 0, fn = front ? [1,0,0] : [-1,0,0];
+        for (const [c0, c1, pinY] of [[ya - 5, ya + 3, ya - 3], [yb - 3, yb + 5, yb + 3]]){
+          let cs = box(xp0, c0, zt - 20, xp1, c1, zt + 1, bm, tone, .7);
+          if (vis(fn)){ const xq = front ? RW + .6 : -.6, xr = front ? RW + 1.8 : -1.8;
+            cs += box(Math.min(xq, xr), pinY - 1, zt - 5, Math.max(xq, xr), pinY + 1, zt - 2.6, matOf('#e2483d'), tone, .5); }
+          put([[Math.min(xp0, front ? RW : -1.8), c0, zt - 20], [Math.max(xp1, front ? RW + 1.8 : 0), c1, zt + 1]], op(cs)); }
+      }
+    }
+  }
+  // loads
+  const carried = st.drag ? st.drag.id : st.held;
+  for (const it of st.items){ if (it.a <= 0) continue;
+    let svg = rkLoad(it.t, it.x, it.y, it.z);
+    if (it.id === carried) svg = `<g opacity=".93">${svg}</g>`;
+    if (it.a < 1) svg = `<g opacity="${f(it.a)}">${svg}</g>`;
+    if (it.mode !== 'ship' && it.mode !== 'slide') svg = act('item', svg, `data-id="${it.id}"`);
+    put(loadBox(it.t, it.x, it.y, it.z), svg); }
+  // drop targets: green where it can go, red where it can't (and why, on release)
+  const cit = carried != null ? st.items.find(i => i.id === carried) : null, hits = [];
+  if (cit){ const Ld = LOADS[cit.t];
+    const showAll = st.held != null, list = showAll ? cands(st, cit).filter(c => !c.origin) : (st.drag && st.drag.moved ? [st.drag.target] : []);
+    for (const c of list){ const r = restPos(st, cit, c.slot), ok = !c.why, col = ok ? '#43c25c' : '#e2483d', sel = st.drag && st.drag.target === c;
+      if (c.slot.ship){ if (showAll || sel) hits.push(act('ship', fill(pd(lane), 'transparent'))); if (sel) s += `<path d="${pd(lane)}" fill="none" stroke="#43c25c" ${mw(4)}/>`; continue; }
+      const q = on(PZ(r[2] + .3), rectUV(r[0] - Ld.hx, r[1] - Ld.hy, r[0] + Ld.hx, r[1] + Ld.hy));
+      put([[r[0] - Ld.hx, r[1] - Ld.hy, r[2] + .1], [r[0] + Ld.hx, r[1] + Ld.hy, r[2] + .6]],
+        fill(pd(q), col, `opacity="${sel ? .35 : .18}"`) + `<path d="${pd(q)}" fill="none" stroke="${col}" ${mw(sel ? 2.4 : 1.6)} stroke-dasharray="5 4"/>`);
+      if (showAll) hits.push(act('slot', fill(sp(hull(boxPts(loadBox(cit.t, r[0], r[1], r[2])).map(p3 => P(...p3)))), 'transparent'), `data-b="${c.slot.b}" data-l="${c.slot.l}" data-p="${c.slot.p}"`)); }
+  }
+  s += byDepth(parts) + hits.join('');
+
+  // labels
+  const r0 = st.items.find(i => inRack(i.slot) && i.mode === 'rest'), moving = Object.values(st.sag).some(g => Math.abs(g.v) > 3);
+  const lab = [
+    { at:[RW, UPY/2, UH*.62], text:'UPRIGHT FRAME', on: st.bK.some((k, b) => b && k > 0 && k < 1) || st.fK.some((k, j) => j > 1 && k > 0 && k < 1) },
+    { at:[RW/2, UPY/2, 12 + (UH - 24)/Math.max(1, Math.round((UH - 36)/95))*.5], text:'BRACING', on:false },
+    { at:[RW, bayY0(0) + CS*.5, beamTop(st, 1) - bh - sagOf(st, 0, 1)], text:'BEAM', on: moving },
+    { at:[RW + .6, bayY0(0) - 1, beamTop(st, 1) - 12], text:'BEAM CONNECTOR', on:false },
+    { at:[RW + 1.8, bayY0(0) - 3, beamTop(st, 1) - 3.8], text:'SAFETY LOCK', on:false },
+    { at:[RW + .1, posY(0, 1) + 8, beamTop(st, 1) - bh/2 - sagOf(st, 0, 1)*POS_SH], text:'LOCATION LABEL', on:false },
+    { at:[RW - UPX/2, -3, 1], text:'BASE PLATE', on:false },
+    { at:[RW + 3.8, UPY/2, 30], text:'COLUMN GUARD', on:false },
+    { at:[RW/2, -1, Math.min(92, UH - 46) + 16], text:'LOAD NOTICE', on:false },
+    ...(r0 ? [{ at:[r0.x + 60, r0.y, r0.z + 7], text:'EUR PALLET', on:false }] : []),
+    { at:[DOCK[2][0] - 66, DOCK[2][1], 0], text:'INBOUND DOCK', on: st.items.some(i => i.mode === 'slide') },
+    { at:[SHIPC[0] + 80, SHIPY[1], 0], text:'SHIP OUT', on: st.items.some(i => i.mode === 'ship') } ];
+  s += xrCallouts(lab, st.B);
+  return s;
+}
+
+/* ---------- the figure ---------- */
+function startState(){
+  return { nb:1, nl:2, pitch:140, rating:1, items:[], sag:{}, nextId:1, drag:null, held:null,
+    fK: Array(MAXB + 1).fill(0), bK: Array(MAXB).fill(0), lvK: Array(MAXL + 1).fill(0), pitchV:140, uhV:0, B:null };
+}
+function addItem(st, t, slot){ const it = { id: st.nextId++, t, slot, x:0, y:0, z:0, vz:0, mode:'rest', a:1, delay:0, landed:true }; st.items.push(it); return it; }
+const settle = st => { for (const it of st.items){ const r = restPos(st, it); it.x = r[0]; it.y = r[1]; it.z = r[2]; } };
+
+ui = mountFigure({
+  fig:'01', title:'Pallet racking', turn:'full',
+  size:[262, 560, 330], palette:'tomato',
+  state: startState(),
+  scene,
+  buttons:[
+    { label:'Put away', choices: st => LOADS.map((Ld, t) => ({ label:`${Ld.name} ${Ld.kg} kg`, onClick:(st) => putAway(st, t) })) },
+    { label:'Bays', choices: st => Array.from({ length:MAXB }, (_, i) => i + 1).map(n => { const hi = rackItems(st).filter(i => i.slot.b >= n);
+        return { label:`${n} bay${n > 1 ? 's' : ''}`, current: st.nb === n, disabled: hi.length > 0,
+          why:`Bay ${Math.max(...hi.map(i => i.slot.b + 1), 0)} still holds loads - unload it first`, onClick:(st) => { st.nb = n; kick(); } }; }) },
+    { label:'Levels', choices: st => Array.from({ length:MAXL }, (_, i) => i + 1).map(n => { const hi = rackItems(st).filter(i => i.slot.l > n), tall = n > st.nl && rkTooTallAtPitch(st, st.pitch, st.rating, n);
+        return { label:`${n} beam level${n > 1 ? 's' : ''}`, current: st.nl === n, disabled: hi.length > 0 || !!tall,
+          why: hi.length ? `Level ${Math.max(...hi.map(i => i.slot.l))} still holds loads - unload it first` : `A ${tall ? LOADS[tall.t].noun : 'load'} on the top level is too tall to fit under a new level`,
+          onClick:(st) => { st.nl = n; kick(); } }; }) },
+    { label:'Level height', choices: st => PITCHES.map(p => { const tall = rkTooTallAtPitch(st, p, st.rating);
+        return { label:`${p} cm pitch`, current: st.pitch === p, disabled: !!tall,
+          why: tall ? `A ${LOADS[tall.t].noun} needs ${LOADS[tall.t].h + GAP} cm clear - a ${p} cm pitch leaves ${clearH(st, p)} cm` : '',
+          onClick:(st) => { st.pitch = p; kick(); } }; }) },
+    { label:'Beam rating', choices: st => RATINGS.map((r, i) => { let over = 0;
+        for (let b = 0; b < st.nb; b++) for (let l = 1; l <= st.nl; l++) over = Math.max(over, levelLoad(st, b, l));
+        const tall = rkTooTallAtPitch(st, st.pitch, i);
+        return { label:`${r.kg} kg per level`, current: st.rating === i, disabled: over > r.kg || !!tall,
+          why: over > r.kg ? `A level already holds ${over} kg - more than ${r.kg} kg` : `The deeper ${r.kg} kg beams leave too little clearance for a load`,
+          onClick:(st) => { st.rating = i; kick(); } }; }) },
+    { label:'Unload all', onClick:(st) => unloadAll(st) },
+  ],
+  stats: st => { const rs = rackItems(st), tot = rs.reduce((a, i) => a + LOADS[i.t].kg, 0);
+    let mx = 0; for (const g of Object.values(st.sag)) mx = Math.max(mx, g.s);
+    return [ { label:'Load', value:`${tot.toLocaleString('en')} kg` },
+      { label:'Slots', value:`${rs.length}/${st.nb*(st.nl + 1)*2}`, small:true },
+      { label:'Sag', value:`${(mx/SAG_EXAG*10).toFixed(1)} mm`, small:true } ]; },
+  acts:{ item:(st, el) => grab(st, el), slot:(st, el) => tapSlot(st, { b:+el.dataset.b, l:+el.dataset.l, p:+el.dataset.p }), ship:(st) => tapSlot(st, { ship:true }) },
+  params:(st, q) => {
+    if (q.has('nb')) st.nb = Math.max(1, Math.min(MAXB, +q.get('nb') | 0));
+    if (q.has('nl')) st.nl = Math.max(1, Math.min(MAXL, +q.get('nl') | 0));
+    if (PITCHES.includes(+q.get('pitch'))) st.pitch = st.pitchV = +q.get('pitch');
+    if (q.has('rating')) st.rating = Math.max(0, Math.min(2, +q.get('rating') | 0));
+    for (let j = 2; j <= st.nb; j++) st.fK[j] = 1; for (let b = 1; b < st.nb; b++) st.bK[b] = 1; for (let l = 1; l <= st.nl; l++) st.lvK[l] = 1;
+    st.uhV = st.nl*st.pitch + 25;
+    DOCK.forEach((_, k) => addItem(st, k, { dock:k }));
+    if (q.get('fill') === '1'){ let n = 0;
+      for (let l = 0; l <= st.nl; l++) for (let b = 0; b < st.nb; b++) for (const p of [0, 1]){ const it = { t:(n++) % 4 }, s = { b, l, p };
+        if (!check(st, it, s)) addItem(st, it.t, s); } }
+    else if (q.get('empty') !== '1') addItem(st, 0, { b:0, l:1, p:0 });
+    for (let b = 0; b < st.nb; b++) for (let l = 1; l <= st.nl; l++) st.sag[b + '-' + l] = { s: SAGV*levelLoad(st, b, l)/rkCap(st), v:0 };
+    settle(st); st.B = targetBounds(st);
+    if (q.has('drag')){ const [b, l, p] = q.get('drag').split('-').map(Number), it = st.items.find(i => i.slot.dock === 3);
+      const s = { b, l, p }; st.drag = { id: it.id, cx:0, cy:0, moved:true, target:{ slot:s, why: check(st, it, s) } }; it.mode = 'carry';
+      const r = restPos(st, it, s); it.x = r[0]; it.y = r[1]; it.z = r[2] + liftFor(st, it, s); }
+    if (q.get('hold') === '1'){ const it = st.items.find(i => i.slot.dock === 2); st.held = it.id; it.mode = 'carry'; it.z = 16; }
+  },
+});
+ui.st.B = targetBounds(ui.st); frameTo(ui.st.B, true); ui.render();
+xrMount(() => ui, () => '', { labelsOnly:true });
+if (ui.st.drag || ui.st.held != null) kick();
+</script></body></html>
