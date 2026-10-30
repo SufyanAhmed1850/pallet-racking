@@ -1,6 +1,24 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pallet racking</title><style>@media (max-width:560px){.stats{flex-wrap:wrap;gap:6px 16px!important}}</style><style>.mcap{display:none!important}@media (max-width:560px){.stat .v{font-size:20px!important}.stats{align-items:flex-end}}@media (min-width:561px){.vset{top:4px!important}#stats{top:var(--vset-h,44px)!important}}</style><style>@media (max-width:560px){body > header{display:none}}</style><script>window.FIG_A = () => innerWidth <= 560 ? 1.1 : .75;</script><script>window.LBL_U = () => { if (innerWidth > 560) return 0; const s = document.getElementById("fig"); return s && s.clientWidth && s.viewBox.baseVal.width ? s.viewBox.baseVal.width / s.clientWidth : 0; };</script></head><body>
+<title>Pallet racking</title><style>
+  @media (max-width:560px){.stats{flex-wrap:wrap;gap:6px 16px!important}}
+  /* no wobble control */
+  html body .ctl:has(#wb){display:none!important}
+  html body{min-height:100vh;min-height:100dvh} html body .controls{margin-top:auto!important}
+  /* full-window layout: controls on the left edge, numbers on the right edge, settings along the bottom edge */
+  @media (min-width:561px){
+    html, html body{height:100%;overflow:hidden}
+    html body{align-items:stretch!important;padding:16px 20px!important}
+    html body > header, html body .stage, html body .controls{max-width:none!important;width:100%}
+    html body .stage{flex:1 1 auto;min-height:0}
+    html body .zwrap{height:100%}
+    html body #fig{max-width:none!important;max-height:none!important;width:100%!important;height:100%!important;margin:0!important}
+    html body .actions{left:0!important;top:0!important}
+    html body .vset, html body .stats{right:0!important}
+    html body .controls{flex:none;margin-top:8px;padding-top:12px!important;grid-template-columns:repeat(2,max-content)!important;justify-content:space-between}
+    html body .mcap{display:none!important}
+  }
+</style><style>.mcap{display:none!important}@media (max-width:560px){.stat .v{font-size:20px!important}.stats{align-items:flex-end}}@media (min-width:561px){.vset{top:4px!important}#stats{top:var(--vset-h,44px)!important}}</style><style>@media (max-width:560px){body > header{display:none}}</style><script>window.FIG_A = () => innerWidth <= 560 ? 1.1 : .75;</script><script>window.LBL_U = () => { if (innerWidth > 560) return 0; const s = document.getElementById("fig"); return s && s.clientWidth && s.viewBox.baseVal.width ? s.viewBox.baseVal.width / s.clientWidth : 0; };</script></head><body>
 <script>
 /* ============================================================
    Colorfigures core: projection, shapes, shading, ink, labels, page shell.
@@ -687,7 +705,7 @@ const UPM = { l:'#7ea6e6', m:'#4f7cc4', d:'#22355c' }, GUARDM = matOf('#f4c430')
 const PWOOD = { l:'#e8c48c', m:'#c99e62', d:'#8a6a3c' }, CARD = { l:'#dcaa72', m:'#bb8854', d:'#7c5532' };
 const TOTEM = { l:'#62c590', m:'#3f9f6e', d:'#1f5a3c' }, CRATEM = { l:'#e6c387', m:'#c79d5c', d:'#8a683c' };
 const GALV = { l:'#d9dee0', m:'#aab2b5', d:'#6f787c' }, PARTM = matOf('#9aa6ad');
-const PAINT = '#f2c230', SHLITE = mix(SHADOW, '#f2efe7', .55);
+const PAINT = '#f2c230';
 
 const rkC01 = v => Math.max(0, Math.min(1, v));
 const rkSh = u => 4*u*(1 - u);                                   // sag shape along the span
@@ -901,6 +919,8 @@ function targetBounds(st){
 
 /* ---------- framing: the view widens and grows as bays and levels are added (same rules as mountFigure) ---------- */
 let rkInk = 0;
+// clean lines: the hand-drawn wobble (the filter's displacement) stays at zero; the paper grain is kept
+const rkNoWobble = () => { const w = document.getElementById('wob'); if (w) w.setAttribute('scale', '0'); };
 function frameTo(B, rebuild){
   const yaw = YAW, pitch = PITCH, svg = document.getElementById('fig');
   OX = OY = 0; RC = [(B[0] + B[1])/2, (B[2] + B[3])/2]; RCZ = (B[4] + B[5])/2; setCam(YAW0, PITCH0);
@@ -911,7 +931,7 @@ function frameTo(B, rebuild){
   setCam(yaw, pitch);
   svg.setAttribute('viewBox', `0 0 ${f(vbW)} ${f(vbH)}`);
   INK_K = vbW / INK_REF_VB;
-  if (rebuild && Math.abs(INK_K/(rkInk || 1) - 1) > .04){ rkInk = INK_K; document.getElementById('fdefs').innerHTML = filterFor(INK_K); bakeNoise(svg); }
+  if (rebuild && Math.abs(INK_K/(rkInk || 1) - 1) > .04){ rkInk = INK_K; document.getElementById('fdefs').innerHTML = filterFor(INK_K); bakeNoise(svg); rkNoWobble(); }
 }
 
 /* ---------- physics + animation: one loop for beams, loads, modules and framing ---------- */
@@ -1034,19 +1054,39 @@ function tapSlot(st, s){
   commit(st, it, s);
 }
 
+/* ---------- draw order for the whole run ----------
+   byDepth hands a mixed rule (separating plane for some pairs, centre depth for the rest) to Array.sort; with hundreds of
+   parts that rule is not transitive, so the sort scrambles and parts pop in front of nearer ones as the view turns.
+   Here only pairs that overlap on screen are ordered (separating plane first, centre depth if none), and the parts are
+   drawn in a topological order of those constraints, nearest-last among the ready ones. */
+function rkByDepth(parts){
+  const n = parts.length, sb = [], dp = [];
+  for (const p of parts){ const xs = [], ys = [];
+    for (const q of boxPts(p.box)){ const [X, Y] = P(...q); xs.push(X); ys.push(Y); }
+    sb.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]); dp.push(depthOf(boxMid(p.box))); }
+  const after = Array.from({ length:n }, () => []), need = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++){
+    const a = sb[i], b = sb[j];
+    if (a[2] <= b[0] || b[2] <= a[0] || a[3] <= b[1] || b[3] <= a[1]) continue;
+    const o = sepOrder(parts[i], parts[j]) || (dp[i] - dp[j]) || (i - j);
+    const [first, last] = o < 0 ? [i, j] : [j, i];
+    after[first].push(last); need[last]++; }
+  const done = new Array(n).fill(false), out = [];
+  for (let k = 0; k < n; k++){
+    let pick = -1;
+    for (let i = 0; i < n; i++) if (!done[i] && !need[i] && (pick < 0 || dp[i] < dp[pick])) pick = i;
+    if (pick < 0) for (let i = 0; i < n; i++) if (!done[i] && (pick < 0 || dp[i] < dp[pick])) pick = i;   // a cycle: break it at the farthest part
+    done[pick] = true; out.push(parts[pick].svg);
+    for (const j of after[pick]) need[j]--; }
+  return out.join('');
+}
+
 /* ---------- scene ---------- */
 function scene(st, m){
   const parts = [], put = (b, svg) => parts.push({ box: b, svg });
   const bh = rkBH(st), UH = st.uhV;
   const frameH = j => j < 2 ? UH : UH*ease(rkC01(st.fK[j]));
   let s = '';
-  // cast shadows: the open frame run casts a light one, loads standing on the floor a full one
-  const sp3 = [];
-  for (let j = 0; j <= MAXB; j++){ const h = frameH(j); if (h <= 1) continue;
-    for (const x of [0, RW]) for (const y of [j*BP, j*BP + UPY]) sp3.push([x, y, 0], [x, y, h]); }
-  if (sp3.length) s += castShadow(sp3).replace(`fill="${SHADOW}"`, `fill="${SHLITE}"`);
-  for (const it of st.items){ const onFloor = !inRack(it.slot) || it.slot.l === 0 || (it.mode === 'carry' && st.drag && st.drag.id === it.id && inRack(st.drag.target.slot) && st.drag.target.slot.l === 0);
-    if (onFloor && it.z < 25 && it.a > .5) s += castShadow(boxPts(loadBox(it.t, it.x, it.y, it.z)), 0); }
   // floor paint: aisle line, inbound dock bays, ship-out lane
   const yEnd = Math.max(st.nb, ...st.fK.map((k, j) => k > 0 ? j : 0))*BP + UPY;
   s += fill(pd(on(PZ(.05), rectUV(RW + 22, -24, RW + 27, yEnd + 24))), PAINT);
@@ -1100,7 +1140,7 @@ function scene(st, m){
         fill(pd(q), col, `opacity="${sel ? .35 : .18}"`) + `<path d="${pd(q)}" fill="none" stroke="${col}" ${mw(sel ? 2.4 : 1.6)} stroke-dasharray="5 4"/>`);
       if (showAll) hits.push(act('slot', fill(sp(hull(boxPts(loadBox(cit.t, r[0], r[1], r[2])).map(p3 => P(...p3)))), 'transparent'), `data-b="${c.slot.b}" data-l="${c.slot.l}" data-p="${c.slot.p}"`)); }
   }
-  s += byDepth(parts) + hits.join('');
+  s += rkByDepth(parts) + hits.join('');
 
   // labels
   const r0 = st.items.find(i => inRack(i.slot) && i.mode === 'rest'), moving = Object.values(st.sag).some(g => Math.abs(g.v) > 3);
@@ -1130,7 +1170,7 @@ function addItem(st, t, slot){ const it = { id: st.nextId++, t, slot, x:0, y:0, 
 const settle = st => { for (const it of st.items){ const r = restPos(st, it); it.x = r[0]; it.y = r[1]; it.z = r[2]; } };
 
 ui = mountFigure({
-  fig:'01', title:'Pallet racking', turn:'full',
+  fig:'01', title:'Pallet racking', turn:'full', credit:false,
   size:[262, 560, 330], palette:'tomato',
   state: startState(),
   scene,
@@ -1181,7 +1221,7 @@ ui = mountFigure({
     if (q.get('hold') === '1'){ const it = st.items.find(i => i.slot.dock === 2); st.held = it.id; it.mode = 'carry'; it.z = 16; }
   },
 });
-ui.st.B = targetBounds(ui.st); frameTo(ui.st.B, true); ui.render();
+ui.st.B = targetBounds(ui.st); frameTo(ui.st.B, true); rkNoWobble(); ui.render();
 xrMount(() => ui, () => '', { labelsOnly:true });
 if (ui.st.drag || ui.st.held != null) kick();
 </script><style>@media (max-width:560px),(pointer:coarse){#art{filter:none!important}.ctl:has(#wb){display:none!important}}</style><style>@media (max-width:560px){html body .kpad{width:100%;box-sizing:border-box;justify-content:space-between;gap:10px;margin:10px 0 0;padding:0;border:0;background:none;box-shadow:none}
