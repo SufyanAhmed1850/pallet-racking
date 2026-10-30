@@ -5,52 +5,121 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Warehouse builder</title>
 <style>
-  :root{--paper:#f4f2ec;--panel:#fbfaf6;--ink:#231e16;--muted:#7d766a;--rule:#dcd6ca;--accent:#2f7de1;--danger:#c8382e}
+  :root{--paper:#f4f2ec;--panel:#fbfaf6;--ink:#231e16;--muted:#7d766a;--rule:#dcd6ca;--soft:#efece5;--accent:#2f7de1;--danger:#c8382e;--ok:#2fae55}
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font:13px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
-  .app{display:grid;grid-template-columns:200px 1fr 250px;grid-template-rows:auto 1fr auto;height:100%}
-  header{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--rule);background:var(--panel);flex-wrap:wrap}
-  header h1{font-size:14px;margin:0 12px 0 0;letter-spacing:.01em}
+  .app{display:grid;grid-template-columns:232px 1fr 272px;grid-template-rows:auto 1fr auto;height:100%}
+  header{grid-column:1/-1;display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--rule);background:var(--panel);flex-wrap:wrap}
+  header h1{font-size:14px;margin:0 8px 0 2px;letter-spacing:.01em;white-space:nowrap}
   header .sp{flex:1}
-  button{font:inherit;color:var(--ink);background:#fff;border:1px solid var(--rule);border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap}
-  button:hover{border-color:#b9b1a2;background:#fdfcf9}
+  .grp{display:flex;gap:2px;padding:2px;border:1px solid var(--rule);border-radius:9px;background:#fff}
+  .grp button{border:0;border-radius:7px;padding:4px 8px}
+  .sep{width:1px;height:22px;background:var(--rule);margin:0 4px}
+  button{font:inherit;color:var(--ink);background:#fff;border:1px solid var(--rule);border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:background .12s,border-color .12s,color .12s}
+  button:hover:not(:disabled){border-color:#b9b1a2;background:#fdfcf9}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  button:disabled{opacity:.4;cursor:not-allowed}
   button.on{background:var(--ink);border-color:var(--ink);color:#fff}
   button.danger{color:var(--danger)}
-  aside{background:var(--panel);overflow:auto;padding:10px}
-  aside.left{border-right:1px solid var(--rule)} aside.right{border-left:1px solid var(--rule)}
-  aside h2{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:12px 2px 6px}
-  aside h2:first-child{margin-top:2px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-  .grid2 button{text-align:left;padding:6px 8px;font-size:12px}
-  .grid2 button.wide{grid-column:1/-1}
-  .tool{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
-  .tool small{color:var(--muted);font-size:10.5px} button.on small{color:#cfd7e6}
+  .ib{padding:5px 6px}
+  .ib.sm{padding:2px 3px;border:0;background:transparent}
+  .ib.sm svg{width:15px;height:15px}
+  .ib.on{background:#fde9c3;border-color:#e5c27c;color:#7a5410}
+  kbd{font:600 10px/1 ui-monospace,Menlo,monospace;color:var(--muted);border:1px solid var(--rule);border-bottom-width:2px;border-radius:4px;padding:2px 4px;background:#fff}
+  button.on kbd{color:#fff;background:transparent;border-color:#6d675d}
+  aside{background:var(--panel);overflow:auto;min-height:0}
+  aside.left{border-right:1px solid var(--rule);display:flex;flex-direction:column}
+  aside.right{border-left:1px solid var(--rule);padding:10px}
+  .lefttop{padding:10px 10px 6px;border-bottom:1px solid var(--rule)}
+  .lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 2px 6px}
+  #tools{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  #tools button{justify-content:flex-start;padding:5px 7px;font-size:12px}
+  #tools button span{flex:1}
+  .search{display:flex;align-items:center;gap:6px;margin:10px 0 2px;border:1px solid var(--rule);border-radius:8px;background:#fff;padding:0 8px;color:var(--muted)}
+  .search input{border:0;outline:0;font:inherit;padding:6px 0;width:100%;background:transparent}
+  #lib{padding:4px 8px 12px;overflow:auto}
+  .cat summary{list-style:none;display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 4px 6px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);user-select:none}
+  .cat summary::-webkit-details-marker{display:none}
+  .cat summary svg{width:13px;height:13px;transition:transform .15s}
+  .cat[open] summary svg{transform:rotate(90deg)}
+  .cat summary span{flex:1} .cat summary small{font-size:10px}
+  .cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+  .card{flex-direction:column;gap:3px;padding:5px 3px 6px;font-size:11px;line-height:1.15;text-align:center;white-space:normal;justify-content:flex-start;min-height:84px;touch-action:none;user-select:none}
+  .card img{width:54px;height:54px;object-fit:contain;pointer-events:none}
+  .card .gi{width:54px;height:54px;display:grid;place-items:center;color:#4a6fb0;background:var(--soft);border-radius:8px}
+  .card .gi svg{width:30px;height:30px}
+  .card.on{background:#e8f0fc;border-color:var(--accent);color:var(--ink)}
+  body.dragging-lib, body.dragging-lib *{cursor:copy!important}
   #view{position:relative;overflow:hidden;min-width:0;min-height:0}
   #view canvas{display:block;touch-action:none}
   .labels{position:absolute;inset:0;pointer-events:none}
   .ltag{pointer-events:auto;cursor:pointer;font:700 10.5px/1 ui-monospace,Menlo,monospace;background:#fff;color:#2b4fb8;border:1.5px solid #3f5fc9;border-radius:6px;padding:3px 5px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.15)}
-  .sizetag{font:600 12px/1 ui-monospace,Menlo,monospace;background:var(--ink);color:#fff;border-radius:6px;padding:4px 7px;white-space:nowrap}
-  footer{grid-column:1/-1;padding:6px 12px;border-top:1px solid var(--rule);background:var(--panel);color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #panel h3{margin:2px 0 10px;font-size:14px}
+  .lockbadge{background:#fde9c3;color:#7a5410;border:1px solid #e5c27c;border-radius:6px;padding:1px 3px;line-height:0}
+  .lockbadge svg{width:13px;height:13px}
+  .sizetag,.meas{font:600 11.5px/1 ui-monospace,Menlo,monospace;background:var(--ink);color:#fff;border-radius:6px;padding:4px 6px;white-space:nowrap}
+  .sizetag.bad{background:var(--danger)}
+  .meas{background:var(--accent);font-size:10.5px;padding:3px 5px}
+  footer{grid-column:1/-1;padding:5px 12px;border-top:1px solid var(--rule);background:var(--panel);color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* properties */
+  .ph{display:flex;align-items:flex-start;gap:6px;margin-bottom:8px}
+  .pt{flex:1;min-width:0}
+  .pt .nm{font:600 14px system-ui,sans-serif;border:1px solid transparent;border-radius:6px;padding:3px 5px;width:100%;background:transparent}
+  .pt .nm:hover:not(:disabled),.pt .nm:focus{border-color:var(--rule);background:#fff;outline:0}
+  .pt .nm2{font-size:14px;display:block;padding:3px 0}
+  .pt small{display:block;color:var(--muted);padding-left:5px}
+  .pa{display:flex;gap:3px}
+  .lockednote{background:#fdf3dc;border:1px solid #edd49b;color:#6c4c12;border-radius:8px;padding:6px 8px;font-size:12px;margin:0 0 8px}
+  .sec{border-top:1px solid var(--rule);padding:4px 0}
+  .sec summary{cursor:pointer;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:5px 0;user-select:none}
+  .secb{padding:2px 0 4px}
+  .row{display:flex;gap:6px}.row > *{flex:1;min-width:0}
   .f{display:flex;flex-direction:column;gap:3px;margin:0 0 8px}
-  .f span{font-size:11px;color:var(--muted)}
-  .f input,.f select{font:inherit;padding:5px 7px;border:1px solid var(--rule);border-radius:7px;background:#fff;width:100%}
-  #panel button{width:100%;margin:4px 0}
+  .f span{font-size:11px;color:var(--muted)} .f span i{font-style:normal;opacity:.7}
+  .f input,.f select{font:inherit;padding:5px 7px;border:1px solid var(--rule);border-radius:7px;background:#fff;width:100%;min-width:0}
+  .f input:disabled,.f select:disabled{background:var(--soft);color:#9a9387}
+  .f.ro output{padding:5px 0;font-variant-numeric:tabular-nums}
+  #panel > button,#panel .row > button,.secb > button{width:100%;margin:3px 0;justify-content:center}
+  .tools{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+  .tools .ib.wide{flex:1;justify-content:center;font-size:11.5px}
   .kv{margin:4px 0;color:#4a443a} .note{color:var(--muted);font-size:11.5px;margin:6px 0}
-  #empty{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);background:var(--panel);border:1px solid var(--rule);border-radius:14px;padding:18px 20px;text-align:center;max-width:320px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+  .bad{color:var(--danger)}
+  .outl{max-height:300px;overflow:auto;border:1px solid var(--rule);border-radius:8px;background:#fff}
+  .oi{display:flex;align-items:center;gap:4px;padding:3px 4px 3px 8px;border-bottom:1px solid var(--soft);cursor:pointer}
+  .oi:hover{background:#f6f8fc} .oi.sel{background:#e8f0fc}
+  .oi .on2{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .oi small{color:var(--muted);font-size:10.5px;white-space:nowrap}
+  .oi.off .on2,.oi.off small{opacity:.45}
+  .warn{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;background:var(--danger);color:#fff;font:700 10px/1 sans-serif;margin-right:4px;font-style:normal}
+  /* overlays in the view */
+  #empty{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);background:var(--panel);border:1px solid var(--rule);border-radius:14px;padding:18px 20px;text-align:center;max-width:330px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
   #empty h2{margin:0 0 6px;font-size:16px} #empty p{margin:0 0 12px;color:var(--muted)}
   #empty button{background:var(--ink);color:#fff;border-color:var(--ink);padding:7px 14px}
-  #toast{position:absolute;left:50%;top:12px;transform:translate(-50%,-8px);background:#fff1bf;border:1px solid rgba(35,30,22,.25);border-radius:8px;padding:7px 12px;font-weight:600;opacity:0;transition:opacity .18s,transform .18s;pointer-events:none;z-index:5;max-width:80%}
+  #toast{position:absolute;left:50%;top:12px;transform:translate(-50%,-8px);background:#fff1bf;border:1px solid rgba(35,30,22,.25);border-radius:8px;padding:7px 12px;font-weight:600;opacity:0;transition:opacity .18s,transform .18s;pointer-events:none;z-index:6;max-width:80%}
   #toast.show{opacity:1;transform:translate(-50%,0)}
+  #hovertip{position:absolute;z-index:5;pointer-events:none;background:rgba(35,30,22,.92);color:#fff;border-radius:8px;padding:6px 9px;font-size:12px;line-height:1.35;max-width:300px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+  #hovertip .bad{color:#ffb4ab} #hovertip .lk{background:#fde9c3;color:#7a5410;border-radius:4px;padding:0 4px;font-size:10.5px}
+  #ctx{position:absolute;z-index:7;min-width:200px;background:#fff;border:1px solid var(--rule);border-radius:10px;padding:4px;box-shadow:0 10px 30px rgba(20,20,20,.16)}
+  #ctx button{display:flex;width:100%;justify-content:space-between;border:0;border-radius:6px;padding:6px 8px}
+  #ctx button:hover{background:#eef3fb}
+  #ctx hr{border:0;border-top:1px solid var(--rule);margin:4px 2px}
+  #ctx .ctxh{padding:5px 8px 3px;color:var(--muted);font-size:12px}
+  #marquee{position:absolute;display:none;border:1.5px dashed var(--accent);background:rgba(47,125,225,.1);pointer-events:none;z-index:4}
   #loggercard{position:absolute;left:0;top:0;width:220px;background:#fff;border:1.5px solid #3f5fc9;border-radius:12px;padding:10px 12px;box-shadow:0 10px 30px rgba(20,30,60,.18);z-index:4}
   #loggercard .ch{display:flex;justify-content:space-between;align-items:center}
   #loggercard .lname{font:800 18px ui-monospace,Menlo,monospace;color:#2b4fb8}
-  #loggercard .x{border:0;background:none;font-size:18px;padding:0 4px;width:auto}
+  #loggercard .x{border:0;background:none;font-size:18px;padding:0 4px}
   #loggercard .temp{font:800 34px/1.1 ui-monospace,Menlo,monospace;margin:4px 0}
   #loggercard .temp small{font-size:14px;margin-left:2px}
-  #loggercard button{width:100%;margin-top:4px}
-  @media (max-width:860px){.app{grid-template-columns:160px 1fr}.right{display:none}}
-  @media (max-width:600px){.app{grid-template-columns:1fr;grid-template-rows:auto auto 1fr auto}aside.left{max-height:150px;border-right:0;border-bottom:1px solid var(--rule)}}
+  #loggercard button.del{width:100%;margin-top:4px;justify-content:center}
+  #keys{position:fixed;inset:0;background:rgba(30,26,20,.35);display:grid;place-items:center;z-index:20}
+  #keys[hidden]{display:none}
+  #keys .sheet{background:#fff;border-radius:14px;padding:16px 20px;max-width:760px;width:calc(100% - 32px);max-height:85vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  #keys h2{margin:0 0 10px;font-size:16px;display:flex;justify-content:space-between}
+  #keys .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:4px 22px}
+  #keys h3{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:10px 0 4px}
+  #keys p{display:flex;justify-content:space-between;gap:10px;margin:3px 0}
+  @media (max-width:980px){.app{grid-template-columns:200px 1fr 240px} header h1{display:none}}
+  @media (max-width:760px){.app{grid-template-columns:1fr;grid-template-rows:auto auto 1fr auto auto}aside.left{max-height:190px;border-right:0;border-bottom:1px solid var(--rule)}aside.right{max-height:180px;border-left:0;border-top:1px solid var(--rule)}}
 </style>
 <script type="importmap">
 { "imports": {
@@ -63,49 +132,48 @@
 <div class="app">
   <header>
     <h1>Warehouse builder</h1>
-    <button id="undo" title="Undo (Ctrl+Z)">Undo</button><button id="redo" title="Redo (Ctrl+Y)">Redo</button>
+    <div class="grp"><button id="undo" class="ib" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button id="redo" class="ib" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button></div>
+    <div class="sep"></div>
+    <div class="grp" role="group" aria-label="Camera views">
+      <button data-view="iso" title="Isometric (0)">Iso</button><button data-view="top" title="Top (5)">Top</button><button data-view="front" title="Front (1)">Front</button><button data-view="back" title="Back (2)">Back</button>
+      <button data-view="left" title="Left (3)">Left</button><button data-view="right" title="Right (4)">Right</button><button data-view="bottom" title="Bottom (6)">Bottom</button>
+    </div>
+    <button id="fit" title="Fit everything in view (.)">Fit</button><button id="reset" title="Reset the camera (Home)">Reset</button>
     <span class="sp"></span>
-    <button id="wallmode">Walls: see-through</button><button id="tags" class="on">Logger tags</button><button id="fit">Fit view</button>
-    <button id="example">Example</button><button id="new">New</button><button id="import">Import</button><button id="export">Export</button>
+    <button id="wallmode" title="Walls"><span class="t">See-through walls</span></button><button id="tags" class="on" title="Show the DL number over each logger">Logger tags</button>
+    <div class="sep"></div>
+    <button id="example" title="Load an example cold store">Example</button><button id="new" title="Start an empty layout">New</button><button id="import" title="Load a layout file">Import</button><button id="export" title="Save the layout as a file">Export</button>
+    <button id="helpbtn" class="ib" title="Keyboard shortcuts (?)">?</button>
     <input id="file" type="file" accept=".json,application/json" hidden>
   </header>
   <aside class="left">
-    <h2>Tools</h2>
-    <div class="grid2">
-      <button data-mode="select" class="tool">Select<small>V</small></button>
-      <button data-mode="logger" class="tool">Place logger<small>L · click a rack</small></button>
-      <button data-mode="floor" class="tool">Floor<small>F · drag</small></button>
-      <button data-mode="wall" class="tool">Wall<small>W · drag</small></button>
+    <div class="lefttop">
+      <p class="lbl">Tools</p>
+      <div id="tools"></div>
+      <label class="search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="libsearch" type="search" placeholder="Search objects" aria-label="Search the object library"></label>
     </div>
-    <h2>Storage</h2>
-    <div class="grid2"><button data-mode="place" data-kind="rack" class="wide">Pallet rack</button></div>
-    <h2>Doors</h2>
-    <div class="grid2">
-      <button data-mode="place" data-kind="door:swing" class="wide">Door</button>
-      <button data-mode="place" data-kind="door:hslide" class="wide">Sliding door (horizontal)</button>
-      <button data-mode="place" data-kind="door:vslide" class="wide">Roller door (vertical)</button>
-    </div>
-    <h2>Loads</h2>
-    <div class="grid2">
-      <button data-mode="place" data-kind="item:carton">Cartons</button>
-      <button data-mode="place" data-kind="item:sack">Sacks</button>
-      <button data-mode="place" data-kind="item:drum">Drums</button>
-      <button data-mode="place" data-kind="item:tote">Totes</button>
-      <button data-mode="place" data-kind="item:crate">Crate</button>
-      <button data-mode="place" data-kind="item:mesh">Mesh box</button>
-      <button data-mode="place" data-kind="item:pallet" class="wide">Empty pallet</button>
-    </div>
-    <h2>Monitoring</h2>
-    <div class="grid2"><button data-mode="logger" class="wide">Data logger (RC-5)</button></div>
+    <div id="lib"></div>
   </aside>
   <main id="view">
-    <div id="empty"><h2>An empty space</h2><p>Start by drawing a floor, then add walls, racks, doors, loads and data loggers.</p><button id="start">Draw a floor</button></div>
+    <div id="empty"><h2>An empty space</h2><p>Start by drawing a floor, then add walls, racks, doors, loads and data loggers. Or load the example.</p><button id="start">Draw a floor</button></div>
     <div id="toast" role="status"></div>
+    <div id="hovertip" hidden></div>
+    <div id="marquee"></div>
+    <div id="ctx" hidden role="menu"></div>
     <div id="loggercard" hidden></div>
   </main>
   <aside class="right"><div id="panel"></div></aside>
   <footer id="hint"></footer>
 </div>
+<div id="keys" hidden><div class="sheet" role="dialog" aria-label="Keyboard shortcuts">
+  <h2>Keyboard and mouse <button class="x ib" title="Close">✕</button></h2>
+  <div class="cols">
+    <div><h3>Tools</h3><p>Select<kbd>V</kbd></p><p>Move (handles)<kbd>G</kbd></p><p>Rotate (ring)<kbd>E</kbd></p><p>Scale a floor<kbd>T</kbd></p><p>Pan tool<kbd>H</kbd></p><p>Orbit tool<kbd>O</kbd></p><p>Floor / Wall<kbd>F / W</kbd></p><p>Place logger<kbd>L</kbd></p><p>Stop / deselect<kbd>Esc</kbd></p></div>
+    <div><h3>Edit</h3><p>Undo / Redo<kbd>Ctrl+Z / Ctrl+Y</kbd></p><p>Copy / Cut / Paste<kbd>Ctrl+C / X / V</kbd></p><p>Duplicate<kbd>Ctrl+D</kbd></p><p>Delete<kbd>Del</kbd></p><p>Rotate 90°<kbd>R</kbd></p><p>Nudge (×10 with Shift)<kbd>Arrows</kbd></p><p>Lock / unlock<kbd>Ctrl+L</kbd></p><p>Hide / show all<kbd>Ctrl+H / Alt+H</kbd></p><p>Group / ungroup<kbd>Ctrl+G / Ctrl+Shift+G</kbd></p><p>Select all<kbd>Ctrl+A</kbd></p></div>
+    <div><h3>Mouse</h3><p>Add to selection<kbd>Shift / Ctrl + click</kbd></p><p>Box select<kbd>Shift + drag empty</kbd></p><p>Lock a drag to X or Z<kbd>X / Z while dragging</kbd></p><p>Orbit<kbd>drag empty space</kbd></p><p>Pan<kbd>middle or right drag</kbd></p><p>Zoom<kbd>wheel</kbd></p><p>Actions<kbd>right-click</kbd></p><p>Open a door<kbd>double-click</kbd></p></div>
+    <div><h3>Camera</h3><p>Front / Back<kbd>1 / 2</kbd></p><p>Left / Right<kbd>3 / 4</kbd></p><p>Top / Bottom<kbd>5 / 6</kbd></p><p>Isometric<kbd>0</kbd></p><p>Fit (selection or all)<kbd>.</kbd></p><p>Reset camera<kbd>Home</kbd></p><p>Zoom in / out<kbd>+ / −</kbd></p><p>Orbit (nothing selected)<kbd>Arrows</kbd></p></div>
+  </div>
+</div></div>
 <script type="module" src="src/main.js"></script>
 </body>
 </html>
