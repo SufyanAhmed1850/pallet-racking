@@ -134,6 +134,18 @@ export function buildItem(type){
 /* ---------- selective pallet rack (local: x along the run, z depth with the aisle at +z, y up; origin at the footprint centre) ---------- */
 export const RACK = { CS: 1.85, UPW: .09, UPD: .07, D: 1.1, GAP: .075, RAT: [{ kg:1000, h:.10 }, { kg:2000, h:.12 }, { kg:3000, h:.14 }] };
 RACK.BP = RACK.CS + RACK.UPW; RACK.CLR = (RACK.CS - 1.6)/3;
+// Beam sag: a beam pair bends elastically, up to L/200 at its rated load (1850 mm span -> 9.25 mm). It is drawn
+// SAG_EXAG times deeper so it can be seen. A pallet position sits SAG_POS of the way to the mid-span dip.
+RACK.SAG_MM = RACK.CS*1000/200; RACK.SAG_EXAG = 4; RACK.SAGV = RACK.SAG_MM/1000*RACK.SAG_EXAG;
+export const sagShape = u => 4*u*(1 - u);
+RACK.SAG_POS = sagShape((RACK.CLR + .4)/RACK.CS);
+// bend a beam made by buildRack (its own segmented geometry) down by s metres at mid-span
+export function bendBeam(mesh, s){
+  if (mesh.userData.bent === s) return; mesh.userData.bent = s;
+  const pos = mesh.geometry.attributes.position, base = mesh.userData.base, CS = RACK.CS;
+  for (let i = 0; i < pos.count; i++) pos.array[i*3 + 1] = base[i*3 + 1] - s*sagShape((base[i*3] + CS/2)/CS);
+  pos.needsUpdate = true; mesh.geometry.computeBoundingSphere(); mesh.geometry.computeBoundingBox();
+}
 export const rackWidth = r => r.bays*RACK.BP + RACK.UPW;
 export const rackHeight = r => r.levels*r.pitch + .25;
 export function slotLocal(r, b, l, p){
@@ -166,12 +178,16 @@ export function buildRack(r){
     g.add(rodBetween(new THREE.Vector3(x, H - .15, za), new THREE.Vector3(x, H - .15, zb), .016, blue));
     for (let i = 0; i < n; i++) g.add(rodBetween(new THREE.Vector3(x, .15 + i*dz, i % 2 ? zb : za), new THREE.Vector3(x, .15 + (i + 1)*dz, i % 2 ? za : zb), .014, blue));
   }
+  g.userData.beams = []; g.userData.loadGroups = [];
   for (let b = 0; b < r.bays; b++){
     const xc = -W/2 + b*BP + UPW + CS/2;
     for (let l = 1; l <= r.levels; l++){
       const y = l*r.pitch - bh/2;
       for (const z of [D/2 - .03, -D/2 + .03]){
-        const bm = box(CS, bh, .05, orange, xc, y, z); bm.userData.part = 'beam'; bm.userData.bay = b; bm.userData.level = l; g.add(bm);
+        // each beam has its own segmented box so it can bend along its span
+        const geo = new THREE.BoxGeometry(CS, bh, .05, 16, 1, 1), bm = new THREE.Mesh(geo, orange);
+        bm.position.set(xc, y, z); bm.userData = { part: 'beam', bay: b, level: l, base: geo.attributes.position.array.slice() };
+        g.add(bm); g.userData.beams.push(bm);
         for (const ex of [xc - CS/2 + .02, xc + CS/2 - .02]) g.add(box(.04, bh + .08, .06, orange, ex, y - .03, z));
       }
     }
@@ -181,7 +197,8 @@ export function buildRack(r){
   sign.position.set(-W/2 - .002, Math.min(1.1, H - .4), 0); sign.rotation.y = -Math.PI/2; g.add(sign);
   // loads on their positions
   r.loads.forEach((ld, i) => { const it = buildItem(ld.item), p = slotLocal(r, ld.b, ld.l, ld.p); it.position.copy(p);
-    it.traverse(o => { if (o.isMesh) o.userData.load = i; }); g.add(it); });
+    it.userData.slot = { b: ld.b, l: ld.l, p: ld.p, index: i, baseY: p.y };
+    it.traverse(o => { if (o.isMesh) o.userData.load = i; }); g.add(it); g.userData.loadGroups.push(it); });
   return g;
 }
 function signTex(r){

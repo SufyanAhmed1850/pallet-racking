@@ -96,7 +96,7 @@ function orientLogger(g, p, n){
   g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
   g.position.copy(p).addScaledVector(z, LOGGER.d/2 + .001);
 }
-function placeLoggerGroup(g, o){ const w = loggerWorld(o); if (w) orientLogger(g, w.p, w.n); }
+function placeLoggerGroup(g, o){ const w = loggerWorld(o); if (w){ orientLogger(g, w.p, w.n); g.userData.baseY = g.position.y; } }
 function sync(){
   const ids = new Set(S.objects.map(o => o.id));
   for (const [id, v] of views) if (!ids.has(id)){ disposeLabels(v.group); world.remove(v.group); views.delete(id); }
@@ -214,6 +214,7 @@ function dropLoad(itemType, tgt, from){
       if (from.rack === s.rack.id){ Object.assign(ld, { b: s.b, l: s.l, p: s.p }); }
       else { r.loads.splice(from.index, 1); s.rack.loads.push({ b: s.b, l: s.l, p: s.p, item: itemType }); } }
     else { if (from && from.item) S.objects = S.objects.filter(o => o.id !== from.item); s.rack.loads.push({ b: s.b, l: s.l, p: s.p, item: itemType }); }
+    drops.set(`${s.rack.id}:${s.b}-${s.l}-${s.p}`, { y: .18, v: 0, kg: M.ITEMS[itemType].kg });    // it is set down from just above
     return true; }
   const f = tgt.floor;
   if (from && from.rack){ const r = byId(from.rack); r.loads.splice(from.index, 1); S.objects.push({ id: newId(), kind: 'item', item: itemType, x: f.x, z: f.z, rot: ghostRot }); }
@@ -445,6 +446,8 @@ function renderPanel(){
     <label class="f"><span>Beam rating</span><select data-k="rating">${M.RACK.RAT.map((r, i) => `<option value="${i}" ${i === o.rating ? 'selected' : ''}>${r.kg} kg per level</option>`).join('')}</select></label>
     ${num('X (m)', 'x', o.x)}${num('Z (m)', 'z', o.z)}${num('Rotation (°)', 'rot', o.rot, 90)}
     <p class="kv"><b>${o.loads.length}</b> of ${o.bays*(o.levels + 1)*2} positions · <b>${kg.toLocaleString('en')} kg</b></p>
+    <p class="kv">Beam sag <b id="sagmm">0.0 mm</b> · limit L/200 = ${M.RACK.SAG_MM.toFixed(1)} mm</p>
+    <p class="note">Sag is drawn ${M.RACK.SAG_EXAG}× deeper so you can see it.</p>
     <button data-act="clearloads">Unload all</button>`; }
   else if (o.kind === 'item'){ const it = M.ITEMS[o.item];
     h = `<h3>${it.name}</h3><p class="kv"><b>${it.kg} kg</b> · ${Math.round(it.h*100)} cm tall</p>${num('X (m)', 'x', o.x)}${num('Z (m)', 'z', o.z)}${num('Rotation (°)', 'rot', o.rot, 90)}
@@ -625,8 +628,44 @@ function frameAll(){
 
 /* ---------- loop: door animation, labels, card ---------- */
 const clock = new THREE.Clock();
+/* ---------- beam sag: each beam pair is a spring pulled toward the dip its load gives; a load set down bounces it ---------- */
+const sag = new Map();         // `${rackId}:${bay}-${level}` -> { s (m, drawn), v }
+const drops = new Map();       // `${rackId}:${bay}-${level}-${pos}` -> { y above rest, v, kg } while a load is being set down
+const sagOf = (rid, b, l) => (sag.get(`${rid}:${b}-${l}`) || { s: 0 }).s;
+function stepSag(dt){
+  for (const [k, d] of drops){
+    d.v -= 9.81*dt; d.y += d.v*dt;
+    if (d.y <= 0){ d.y = 0; d.landed = true;
+      const [rid, rest] = k.split(':'), r = byId(+rid), [b, l] = rest.split('-').map(Number);
+      if (r && l > 0){ const sp = sag.get(`${rid}:${b}-${l}`); if (sp) sp.v += .08*Math.abs(d.v)*d.kg/M.RACK.RAT[r.rating].kg; }
+      if (d.v < -.5) d.v = -d.v*.15; else drops.delete(k); } }
+  for (const r of ofKind('rack')){
+    const v = views.get(r.id), g = v && v.group; if (!g || !g.userData.beams) continue;
+    const cap = M.RACK.RAT[r.rating].kg, lifted = drag && drag.armed && drag.from && drag.from.rack === r.id ? drag.from.index : -1, load = {};
+    r.loads.forEach((ld, i) => { if (i === lifted || !ld.l) return; const d = drops.get(`${r.id}:${ld.b}-${ld.l}-${ld.p}`); if (d && !d.landed) return;     // still in the air
+      load[ld.b + '-' + ld.l] = (load[ld.b + '-' + ld.l] || 0) + M.ITEMS[ld.item].kg; });
+    for (let b = 0; b < r.bays; b++) for (let l = 1; l <= r.levels; l++){
+      const key = `${r.id}:${b}-${l}`, tgt = M.RACK.SAGV*(load[b + '-' + l] || 0)/cap, sp = sag.get(key) || { s: tgt, v: 0 };
+      sp.v += (260*(tgt - sp.s) - 11*sp.v)*dt; sp.s += sp.v*dt;
+      if (Math.abs(tgt - sp.s) < 1e-5 && Math.abs(sp.v) < 1e-4){ sp.s = tgt; sp.v = 0; }
+      sag.set(key, sp); }
+    for (const bm of g.userData.beams) M.bendBeam(bm, sagOf(r.id, bm.userData.bay, bm.userData.level));
+    for (const lg of g.userData.loadGroups){ const s = lg.userData.slot, d = drops.get(`${r.id}:${s.b}-${s.l}-${s.p}`);
+      lg.position.y = s.baseY - (s.l ? sagOf(r.id, s.b, s.l)*M.RACK.SAG_POS : 0) + (d ? d.y : 0); }
+  }
+  // loggers clipped to a beam ride its bend
+  for (const o of ofKind('logger')){ if (o.part !== 'beam' || o.level == null) continue;
+    const h = byId(o.host), v = views.get(o.id); if (!h || h.kind !== 'rack' || !v || v.group.userData.baseY == null) continue;
+    const x0 = -M.rackWidth(h)/2 + o.bay*M.RACK.BP + M.RACK.UPW, u = Math.max(0, Math.min(1, (o.local[0] - x0)/M.RACK.CS));
+    v.group.position.y = v.group.userData.baseY - sagOf(h.id, o.bay, o.level)*M.sagShape(u); }
+  // live figure in the rack panel
+  const el = $('#sagmm'); if (el && sel){ const r = byId(sel.id); if (r && r.kind === 'rack'){ let mx = 0;
+    for (let b = 0; b < r.bays; b++) for (let l = 1; l <= r.levels; l++) mx = Math.max(mx, sagOf(r.id, b, l));
+    el.textContent = (mx/M.RACK.SAG_EXAG*1000).toFixed(1) + ' mm'; } }
+}
 function loop(){
   const dt = Math.min(.05, clock.getDelta());
+  stepSag(dt);
   for (const o of ofKind('door')){ const k = doorK.get(o.id) ?? 0, tgt = o.open ? 1 : 0;
     if (k !== tgt){ const nk = tgt > k ? Math.min(1, k + dt/1.1) : Math.max(0, k - dt/1.1); doorK.set(o.id, nk); const v = views.get(o.id); if (v) v.group.userData.anim(easeIO(nk)); } }
   if (selBox.visible){ const g = selGroup(); if (g) selBox.box.setFromObject(g, true); }
@@ -646,4 +685,4 @@ resize(); applyWallMode(); sync(); setMode('select'); renderPanel(); frameAll();
   const lg = q.get('logger') && ofKind('logger').find(o => o.name === q.get('logger'));
   if (lg){ select({ id: lg.id }); const p = views.get(lg.id).group.getWorldPosition(V3()), n = loggerWorld(lg).n;
     controls.target.copy(p); camera.position.copy(p).add(n.multiplyScalar(1.1)).add(V3(.5, .35, 0)); } }
-window.__wb = { get S(){ return S; }, views, select, setMode, commit, frameAll, camera, get sel(){ return sel; } };
+window.__wb = { get S(){ return S; }, views, select, setMode, commit, frameAll, camera, get sel(){ return sel; }, stepSag };
