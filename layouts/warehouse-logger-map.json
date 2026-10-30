@@ -1,0 +1,1078 @@
+{
+ "v": 1,
+ "nextId": 67,
+ "seq": {
+  "rack": 5,
+  "logger": 395
+ },
+ "ambient": 5,
+ "snap": 0.1,
+ "rotSnap": 15,
+ "gridSize": 1,
+ "objects": [
+  {
+   "id": 1,
+   "kind": "floor",
+   "x": 0,
+   "z": 0,
+   "w": 17,
+   "d": 21,
+   "name": "Floor 1"
+  },
+  {
+   "id": 2,
+   "kind": "wall",
+   "x1": -8.4,
+   "z1": -10.4,
+   "x2": 8.4,
+   "z2": -10.4,
+   "h": 6,
+   "t": 0.2,
+   "name": "Wall 1"
+  },
+  {
+   "id": 3,
+   "kind": "wall",
+   "x1": 8.4,
+   "z1": -10.4,
+   "x2": 8.4,
+   "z2": 10.4,
+   "h": 6,
+   "t": 0.2,
+   "name": "Wall 2"
+  },
+  {
+   "id": 4,
+   "kind": "wall",
+   "x1": 8.4,
+   "z1": 10.4,
+   "x2": -8.4,
+   "z2": 10.4,
+   "h": 6,
+   "t": 0.2,
+   "name": "Wall 3"
+  },
+  {
+   "id": 5,
+   "kind": "wall",
+   "x1": -8.4,
+   "z1": 10.4,
+   "x2": -8.4,
+   "z2": -10.4,
+   "h": 6,
+   "t": 0.2,
+   "name": "Wall 4"
+  },
+  {
+   "id": 6,
+   "kind": "door",
+   "type": "vslide",
+   "wall": 4,
+   "t": 10,
+   "w": 2.5,
+   "h": 3.2,
+   "open": false,
+   "name": "Door"
+  },
+  {
+   "id": 7,
+   "kind": "rack",
+   "name": "R-01",
+   "x": 0,
+   "z": -9.65,
+   "rot": 0,
+   "bays": 3,
+   "levels": 2,
+   "pitch": 2.1,
+   "rating": 1,
+   "loads": []
+  },
+  {
+   "id": 8,
+   "kind": "rack",
+   "name": "R-02",
+   "x": -7.65,
+   "z": 1.865,
+   "rot": 90,
+   "bays": 7,
+   "levels": 3,
+   "pitch": 1.4,
+   "rating": 1,
+   "loads": []
+  },
+  {
+   "id": 9,
+   "kind": "rack",
+   "name": "R-03",
+   "x": -0.65,
+   "z": 0.895,
+   "rot": 270,
+   "bays": 6,
+   "levels": 3,
+   "pitch": 1.4,
+   "rating": 1,
+   "loads": []
+  },
+  {
+   "id": 10,
+   "kind": "rack",
+   "name": "R-04",
+   "x": 0.65,
+   "z": 1.865,
+   "rot": 90,
+   "bays": 7,
+   "levels": 3,
+   "pitch": 1.4,
+   "rating": 1,
+   "loads": []
+  },
+  {
+   "id": 11,
+   "kind": "rack",
+   "name": "R-05",
+   "x": 7.65,
+   "z": 0.895,
+   "rot": 270,
+   "bays": 8,
+   "levels": 3,
+   "pitch": 1.4,
+   "rating": 1,
+   "loads": []
+  },
+  {
+   "id": 12,
+   "kind": "logger",
+   "name": "DL-208",
+   "host": 7,
+   "part": "upright",
+   "local": [
+    -2.91,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 13,
+   "kind": "logger",
+   "name": "DL-112",
+   "host": 7,
+   "part": "upright",
+   "local": [
+    -2.91,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 14,
+   "kind": "logger",
+   "name": "DL-34",
+   "host": 7,
+   "part": "upright",
+   "local": [
+    0.97,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 15,
+   "kind": "logger",
+   "name": "DL-302",
+   "host": 7,
+   "part": "upright",
+   "local": [
+    0.97,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 16,
+   "kind": "logger",
+   "name": "DL-371",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    4.85,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 17,
+   "kind": "logger",
+   "name": "DL-51",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    4.85,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 18,
+   "kind": "logger",
+   "name": "DL-373",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    4.85,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 19,
+   "kind": "logger",
+   "name": "DL-334",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    0.97,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 20,
+   "kind": "logger",
+   "name": "DL-54",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    0.97,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 21,
+   "kind": "logger",
+   "name": "DL-309",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    0.97,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 22,
+   "kind": "logger",
+   "name": "DL-136",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    -2.91,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 23,
+   "kind": "logger",
+   "name": "DL-117",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    -2.91,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 24,
+   "kind": "logger",
+   "name": "DL-81",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    -2.91,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 25,
+   "kind": "logger",
+   "name": "DL-350",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    -6.79,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 26,
+   "kind": "logger",
+   "name": "DL-02",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    -6.79,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 27,
+   "kind": "logger",
+   "name": "DL-341",
+   "host": 8,
+   "part": "upright",
+   "local": [
+    -6.79,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 28,
+   "kind": "logger",
+   "name": "DL-116",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    -5.82,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 29,
+   "kind": "logger",
+   "name": "DL-395",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    -5.82,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 30,
+   "kind": "logger",
+   "name": "DL-148",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    -5.82,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 31,
+   "kind": "logger",
+   "name": "DL-46",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    -1.94,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 32,
+   "kind": "logger",
+   "name": "DL-20",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    -1.94,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 33,
+   "kind": "logger",
+   "name": "DL-338",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    -1.94,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 34,
+   "kind": "logger",
+   "name": "DL-155",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    1.94,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 35,
+   "kind": "logger",
+   "name": "DL-227",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    1.94,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 36,
+   "kind": "logger",
+   "name": "DL-178",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    1.94,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 37,
+   "kind": "logger",
+   "name": "DL-173",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    5.82,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 38,
+   "kind": "logger",
+   "name": "DL-320",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    5.82,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 39,
+   "kind": "logger",
+   "name": "DL-132",
+   "host": 9,
+   "part": "upright",
+   "local": [
+    5.82,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 40,
+   "kind": "logger",
+   "name": "DL-29",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    6.79,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 41,
+   "kind": "logger",
+   "name": "DL-384",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    6.79,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 42,
+   "kind": "logger",
+   "name": "DL-306",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    6.79,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 43,
+   "kind": "logger",
+   "name": "DL-310",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    2.91,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 44,
+   "kind": "logger",
+   "name": "DL-312",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    2.91,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 45,
+   "kind": "logger",
+   "name": "DL-235",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    2.91,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 46,
+   "kind": "logger",
+   "name": "DL-115",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    -0.97,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 47,
+   "kind": "logger",
+   "name": "DL-74",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    -0.97,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 48,
+   "kind": "logger",
+   "name": "DL-88",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    -0.97,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 49,
+   "kind": "logger",
+   "name": "DL-79",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    -4.85,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 50,
+   "kind": "logger",
+   "name": "DL-343",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    -4.85,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 51,
+   "kind": "logger",
+   "name": "DL-351",
+   "host": 10,
+   "part": "upright",
+   "local": [
+    -4.85,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 52,
+   "kind": "logger",
+   "name": "DL-44",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    -7.76,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 53,
+   "kind": "logger",
+   "name": "DL-344",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    -7.76,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 54,
+   "kind": "logger",
+   "name": "DL-179",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    -7.76,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 55,
+   "kind": "logger",
+   "name": "DL-330",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    -3.88,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 56,
+   "kind": "logger",
+   "name": "DL-218",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    -3.88,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 57,
+   "kind": "logger",
+   "name": "DL-93",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    -3.88,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 58,
+   "kind": "logger",
+   "name": "DL-374",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    0.0,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 59,
+   "kind": "logger",
+   "name": "DL-362",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    0.0,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 60,
+   "kind": "logger",
+   "name": "DL-328",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    0.0,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 61,
+   "kind": "logger",
+   "name": "DL-190",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    3.88,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 62,
+   "kind": "logger",
+   "name": "DL-315",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    3.88,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 63,
+   "kind": "logger",
+   "name": "DL-106",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    3.88,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 64,
+   "kind": "logger",
+   "name": "DL-24",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    7.76,
+    0.5,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 65,
+   "kind": "logger",
+   "name": "DL-97",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    7.76,
+    2.25,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 66,
+   "kind": "logger",
+   "name": "DL-49",
+   "host": 11,
+   "part": "upright",
+   "local": [
+    7.76,
+    4.1,
+    0.55
+   ],
+   "normal": [
+    0,
+    0,
+    1
+   ]
+  }
+ ]
+}

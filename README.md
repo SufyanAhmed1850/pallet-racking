@@ -16,6 +16,10 @@ Lay out a warehouse or cold store in 3D, fill it with racks and loads, and place
 
 Press `?` in the app for all keyboard shortcuts.
 
+## Ready-made layouts
+
+- [`layouts/warehouse-logger-map.json`](https://sufyanahmed1850.github.io/pallet-racking/layouts/warehouse-logger-map.json) — a 17 × 21 m warehouse with five racks, one door and 55 numbered loggers. Save the file, then choose Import in the app.
+
 ## Files
 
 - `index.html`, `src/` — the builder (three.js r180 from jsDelivr, no build step): `main.js` (app), `rules.js` (placement rules), `models.js`, `logger.js`, `library.js`
