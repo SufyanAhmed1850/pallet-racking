@@ -111,6 +111,22 @@
   #loggercard .temp{font:800 34px/1.1 ui-monospace,Menlo,monospace;margin:4px 0}
   #loggercard .temp small{font-size:14px;margin-left:2px}
   #loggercard button.del{width:100%;margin-top:4px;justify-content:center}
+  #shotframe{position:absolute;pointer-events:none;outline:1.5px solid rgba(255,255,255,.95);box-shadow:0 0 0 1px rgba(35,30,22,.5),0 0 0 4000px rgba(30,25,18,.42);z-index:3}
+  #shotframe[hidden]{display:none}
+  #shotframe.thirds{background:linear-gradient(90deg,transparent calc(33.33% - .5px),rgba(255,255,255,.55) calc(33.33% - .5px),rgba(255,255,255,.55) calc(33.33% + .5px),transparent calc(33.33% + .5px),transparent calc(66.66% - .5px),rgba(255,255,255,.55) calc(66.66% - .5px),rgba(255,255,255,.55) calc(66.66% + .5px),transparent calc(66.66% + .5px)),linear-gradient(0deg,transparent calc(33.33% - .5px),rgba(255,255,255,.55) calc(33.33% - .5px),rgba(255,255,255,.55) calc(33.33% + .5px),transparent calc(33.33% + .5px),transparent calc(66.66% - .5px),rgba(255,255,255,.55) calc(66.66% - .5px),rgba(255,255,255,.55) calc(66.66% + .5px),transparent calc(66.66% + .5px))}
+  #shotpanel[hidden],#panel[hidden]{display:none}
+  #shotpanel .ph{display:flex;align-items:center;justify-content:space-between;margin:0 0 4px;font-size:14px}
+  #shotpanel .note{color:var(--muted);font-size:12px;margin:0 0 8px}
+  #shotpanel .lbl{margin:10px 2px 5px}
+  #shotpanel .seg{display:flex;flex-wrap:wrap;gap:3px}
+  #shotpanel .seg button{padding:3px 7px;font-size:12px}
+  #shotpanel .dim{margin:4px 2px 0;color:var(--muted);font:11.5px ui-monospace,Menlo,monospace}
+  #shotpanel .chks{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;margin-top:8px}
+  #shotpanel .chk{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer}
+  #shotpanel .cap{width:100%;margin-top:6px;font:inherit;padding:5px 8px;border:1px solid var(--rule);border-radius:8px}
+  #shotpanel .pv{display:grid;place-items:center;background:repeating-conic-gradient(#e6e2d9 0 25%,#f6f4ef 0 50%) 0 0/14px 14px;border:1px solid var(--rule);border-radius:8px;padding:6px;min-height:80px}
+  #shotpanel .pv canvas{display:block;border-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+  #shotpanel .save{width:100%;justify-content:center;margin-top:10px;padding:8px 10px}
   #keys{position:fixed;inset:0;background:rgba(30,26,20,.35);display:grid;place-items:center;z-index:20}
   #keys[hidden]{display:none}
   #keys .sheet{background:#fff;border-radius:14px;padding:16px 20px;max-width:760px;width:calc(100% - 32px);max-height:85vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -142,7 +158,7 @@
     <span class="sp"></span>
     <button id="wallmode" title="Walls"><span class="t">See-through walls</span></button><button id="tags" class="on" title="Show the DL number over each logger">Logger tags</button>
     <div class="sep"></div>
-    <button id="example" title="Load an example cold store">Example</button><button id="new" title="Start an empty layout">New</button><button id="import" title="Load a layout file">Import</button><button id="export" title="Save the layout as a file">Export</button>
+    <button id="example" title="Load an example cold store">Example</button><button id="new" title="Start an empty layout">New</button><button id="import" title="Load a layout file">Import</button><button id="export" title="Save the layout as a file">Export</button><button id="shotbtn" title="Save a high-quality PNG image of the view (P)">Image</button>
     <button id="helpbtn" class="ib" title="Keyboard shortcuts (?)">?</button>
     <input id="file" type="file" accept=".json,application/json" hidden>
   </header>
@@ -171,7 +187,7 @@
     <div><h3>Tools</h3><p>Select<kbd>V</kbd></p><p>Move (handles)<kbd>G</kbd></p><p>Rotate (ring)<kbd>E</kbd></p><p>Scale a floor<kbd>T</kbd></p><p>Pan tool<kbd>H</kbd></p><p>Orbit tool<kbd>O</kbd></p><p>Floor / Wall<kbd>F / W</kbd></p><p>Place logger<kbd>L</kbd></p><p>Stop / deselect<kbd>Esc</kbd></p></div>
     <div><h3>Edit</h3><p>Undo / Redo<kbd>Ctrl+Z / Ctrl+Y</kbd></p><p>Copy / Cut / Paste<kbd>Ctrl+C / X / V</kbd></p><p>Duplicate<kbd>Ctrl+D</kbd></p><p>Delete<kbd>Del</kbd></p><p>Rotate 90°<kbd>R</kbd></p><p>Nudge (×10 with Shift)<kbd>Arrows</kbd></p><p>Lock / unlock<kbd>Ctrl+L</kbd></p><p>Hide / show all<kbd>Ctrl+H / Alt+H</kbd></p><p>Group / ungroup<kbd>Ctrl+G / Ctrl+Shift+G</kbd></p><p>Select all<kbd>Ctrl+A</kbd></p></div>
     <div><h3>Mouse</h3><p>Add to selection<kbd>Shift / Ctrl + click</kbd></p><p>Box select<kbd>Shift + drag empty</kbd></p><p>Lock a drag to X or Z<kbd>X / Z while dragging</kbd></p><p>Orbit<kbd>drag empty space</kbd></p><p>Pan<kbd>middle or right drag</kbd></p><p>Zoom<kbd>wheel</kbd></p><p>Actions<kbd>right-click</kbd></p><p>Open a door<kbd>double-click</kbd></p></div>
-    <div><h3>Camera</h3><p>Front / Back<kbd>1 / 2</kbd></p><p>Left / Right<kbd>3 / 4</kbd></p><p>Top / Bottom<kbd>5 / 6</kbd></p><p>Isometric<kbd>0</kbd></p><p>Fit (selection or all)<kbd>.</kbd></p><p>Reset camera<kbd>Home</kbd></p><p>Zoom in / out<kbd>+ / −</kbd></p><p>Orbit (nothing selected)<kbd>Arrows</kbd></p></div>
+    <div><h3>Camera</h3><p>Front / Back<kbd>1 / 2</kbd></p><p>Left / Right<kbd>3 / 4</kbd></p><p>Top / Bottom<kbd>5 / 6</kbd></p><p>Isometric<kbd>0</kbd></p><p>Fit (selection or all)<kbd>.</kbd></p><p>Reset camera<kbd>Home</kbd></p><p>Zoom in / out<kbd>+ / −</kbd></p><p>Orbit (nothing selected)<kbd>Arrows</kbd></p><p>Save image (PNG)<kbd>P</kbd></p></div>
   </div>
 </div></div>
 <script type="module" src="src/main.js"></script>

@@ -7,6 +7,7 @@ import * as M from './models.js';
 import * as R from './rules.js';
 import { buildLogger, makeSim, LOGGER } from './logger.js';
 import { ICON, LIBRARY, renderThumbs } from './library.js';
+import { setupPhoto } from './photo.js';
 
 const KEY = 'warehouse-builder-v1', CLIP_KEY = 'warehouse-builder-clipboard';
 const $ = s => document.querySelector(s);
@@ -68,7 +69,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = .12; controls.maxPolarAngle = 1.48; controls.minDistance = .12; controls.maxDistance = 150;
 controls.screenSpacePanning = false; controls.zoomToCursor = true;
 controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
-scene.add(new THREE.HemisphereLight('#ffffff', '#cbc4b4', 1.7));
+const hemi = new THREE.HemisphereLight('#ffffff', '#cbc4b4', 1.7); scene.add(hemi);
 const sun = new THREE.DirectionalLight('#ffffff', 1.5); sun.position.set(9, 16, 7); scene.add(sun);
 const fillL = new THREE.DirectionalLight('#ffffff', .45); fillL.position.set(-10, 6, -8); scene.add(fillL);
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: '#e3dfd6', roughness: 1 }));
@@ -849,7 +850,7 @@ function sceneBox(onlySel){
   else for (const [id, v] of views){ const o = byId(id); if (o && isShown(o)) b.expandByObject(v.group); }
   return b;
 }
-const VIEWS = { front: [0, .32, 1], back: [0, .32, -1], left: [-1, .32, 0], right: [1, .32, 0], top: [0, 1, .0001], bottom: [0, -1, .0001], iso: [.62, .58, .72] };
+const VIEWS = { front: [0, .32, 1], back: [0, .32, -1], left: [-1, .32, 0], right: [1, .32, 0], top: [0, 1, .0001], bottom: [0, -1, .0001], iso: [.62, .58, .72], hero: [.78, .24, .58] };
 function viewFrom(name, box = sceneBox()){
   if (box.isEmpty()) box = new THREE.Box3(V3(-8, 0, -6), V3(8, 3, 6));
   const c = box.getCenter(V3()), s = box.getSize(V3()), dir = V3(...VIEWS[name]).normalize();
@@ -882,6 +883,8 @@ addEventListener('keydown', e => {
   if (mod && k === 'l'){ e.preventDefault(); const l = selObjects(); if (l.length) setLock(l, !l.every(o => o.locked)); return; }
   if (mod && k === 'h'){ e.preventDefault(); const l = selObjects(); if (l.length) setHidden(l, true); return; }
   if (e.altKey && k === 'h'){ e.preventDefault(); setHidden(S.objects.filter(o => o.hidden), false); return; }
+  if (k === 'escape' && photo.isOpen){ photo.close(); return; }
+  if (k === 'p' && !mod){ photo.toggle(); return; }
   if (k === 'escape'){ hideCtx(); if (mode !== 'select') setMode('select'); else select(null); return; }
   if (k === 'delete' || k === 'backspace'){ e.preventDefault(); removeSel(); return; }
   if (k === 'r' && !mod){ if (mode === 'place'){ ghostRot = (ghostRot + 90) % 360; if (ghost && placeKind === 'rack') ghost.rotation.y = rad(ghostRot); } else rotateSel(e.shiftKey ? -90 : 90); return; }
@@ -1235,6 +1238,14 @@ function loop(){
 }
 const easeIO = t => t < .5 ? 2*t*t : 1 - (-2*t + 2)**2/2;
 
+/* ---------- image export (Save image panel, src/photo.js) ---------- */
+const photo = setupPhoto({ scene, camera, controls, view, world, wallMat, ground, views, sceneBox, viewFrom, toast,
+  hide: () => [overlay, guides, tc.getHelper()], getGrid: () => grid, settleCamera: () => { if (camTween){ camTween.t = 1; stepCam(0); controls.update(); } }, lights: { hemi, sun, fill: fillL },
+  defaultTitle: () => { const f = ofKind('floor').find(o => o.name && !/^Floor \d+$/.test(o.name)); return f ? f.name : 'Warehouse layout'; },
+  summary: () => { const fl = ofKind('floor'), area = fl.reduce((a, f) => a + f.w*f.d, 0), n = (k, one) => { const c = ofKind(k).length; return c ? `${c} ${one}${c > 1 ? 's' : ''}` : ''; };
+    return [fl.length === 1 ? `${fl[0].w.toFixed(1)} × ${fl[0].d.toFixed(1)} m` : area ? `${area.toFixed(0)} m²` : '', n('rack', 'rack'), n('door', 'door'), n('logger', 'logger')].filter(Boolean).join('  ·  '); } });
+$('#shotbtn').onclick = () => photo.toggle();
+
 /* ---------- start ---------- */
 buildToolbar(); buildLibrary();
 resize(); applyWallMode(); sync(); setMode('select'); renderPanel(); refreshUndo(); tickReadings(); loop();
@@ -1253,5 +1264,5 @@ setTimeout(() => { THUMBS = renderThumbs(); buildLibrary(THUMBS); }, 30);
   if (q.has('sel')){ const names = q.get('sel').split(','); setSelection(S.objects.filter(o => names.includes(o.name)).map(o => ({ id: o.id }))); }
   if (q.has('tool')) setMode(q.get('tool')); }
 window.__wb = { get S(){ return S; }, views, select, setSelection, get selection(){ return selection; }, setMode, commit, frameAll, camera, controls, stepSag, stepCam, viewFrom,
-  align, distribute, copySel, pasteClip, duplicate, removeSel, setLock, setHidden, groupSel, rotateSel, nudge, resizeFloor, undo, redo, R, tc, pivot,
+  photo, align, distribute, copySel, pasteClip, duplicate, removeSel, setLock, setHidden, groupSel, rotateSel, nudge, resizeFloor, undo, redo, R, tc, pivot,
   get sel(){ return primary(); } };

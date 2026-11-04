@@ -12,6 +12,7 @@ Lay out a warehouse or cold store in 3D, fill it with racks and loads, and place
 - **Camera:** orbit by dragging empty space, pan with the middle or right button or the Pan tool, zoom with the wheel; Top, Bottom, Front, Back, Left, Right and Isometric views; Fit and Reset.
 - **Racks and loads:** bays, levels, level pitch and beam rating; loads checked against the rating and the 75 mm clearance; beams sag under load and bounce when a pallet is set down.
 - **Data loggers:** a 3D Elitech RC-5; in logger mode click a rack (or a wall) to place one; numbered DL-01, DL-02…; clicking one shows its number, a live simulated reading and where it is.
+- **Images:** Image (or `P`) frames a shot in the view and saves a PNG: HD, QHD, 4K or 8K; 16:9, 2.39:1 cinema, 4:3, square, 4:5 or 9:16; an 18–85 mm lens; a cinematic look (soft shadows, filmic tone, low warm sun, haze, vignette) or a clean one; logger tags, optional caption, grid and transparent background. Rendered off screen in tiles and supersampled.
 - **Saving:** autosaves in the browser; Export/Import a layout as a JSON file (older files load as before); Undo/Redo for every edit.
 
 Press `?` in the app for all keyboard shortcuts.
@@ -23,5 +24,5 @@ Press `?` in the app for all keyboard shortcuts.
 
 ## Files
 
-- `index.html`, `src/` — the builder (three.js r180 from jsDelivr, no build step): `main.js` (app), `rules.js` (placement rules), `models.js`, `logger.js`, `library.js`
+- `index.html`, `src/` — the builder (three.js r180 from jsDelivr, no build step): `main.js` (app), `photo.js` (image export), `rules.js` (placement rules), `models.js`, `logger.js`, `library.js`
 - `rack-figure.html` — the earlier single-rack illustrated figure; `racking.html` + `core.js` are its source, built with [Colorfigures](https://april-zhu.com/colorfigures) by April Zhu (MIT, see `LICENSE-colorfigures`)
