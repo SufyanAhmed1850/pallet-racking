@@ -1064,7 +1064,8 @@ function updateStats(){
 const readings = new Map(), sim = makeSim();
 function loggerWhere(o){
   const h = byId(o.host); if (!h) return 'Unattached';
-  if (h.kind === 'wall') return `${h.name}, ${o.local[1].toFixed(2)} m up`;
+  if (h.kind === 'wall') return `${h.name}, ${o.local[1].toFixed(2)} m up${o.local[2] < 0 ? ', outside face' : ''}`;
+  if (h.kind === 'floor') return `${h.name}, hanging ${o.local[1].toFixed(2)} m above the floor`;     // e.g. a ceiling logger in an imported layout
   const W = M.rackWidth(h), [lx, ly] = o.local, b = o.bay ?? Math.floor((lx + W/2)/M.RACK.BP), l = o.level ?? Math.floor((ly + .02)/h.pitch);
   const inside = b >= 0 && b < h.bays && ly <= M.rackHeight(h) + .05;
   return `Rack ${h.name}${inside ? `, bay ${b + 1}, ${l > 0 ? 'level ' + Math.min(l, h.levels) : 'ground level'}` : ''}, on the ${o.part || 'rack'}`;

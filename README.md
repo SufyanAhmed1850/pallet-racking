@@ -19,6 +19,7 @@ Press `?` in the app for all keyboard shortcuts.
 ## Ready-made layouts
 
 - [`layouts/warehouse-logger-map.json`](https://sufyanahmed1850.github.io/pallet-racking/layouts/warehouse-logger-map.json) — a 17 × 21 m warehouse with five racks, one door and 55 numbered loggers. Save the file, then choose Import in the app.
+- [`layouts/wet-chemistry-lab.json`](https://sufyanahmed1850.github.io/pallet-racking/layouts/wet-chemistry-lab.json) — a wet chemistry lab with four doors and 15 loggers: four wall positions at top, mid and bottom height, one at the ceiling, and two outside the door and the entrance.
 
 ## Files
 
